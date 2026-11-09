@@ -30,7 +30,9 @@
       }
     },
     "confirmed_yen": 4610,
-    "potential_monthly_yen": 10340
+    "potential_monthly_yen": 10340,
+    "input_errors": 0,
+    "input_warnings": 0
   },
   "findings": [
     {
@@ -233,5 +235,6 @@
       "diff_yen": 2500,
       "confidence": "確定"
     }
-  ]
+  ],
+  "input_issues": []
 }

@@ -80,30 +80,39 @@ def funnel(s: Scenario) -> dict:
     )
 
 
-def ramp(s: Scenario, months: int = 12) -> list[dict]:
-    """月次の立ち上がり。営業開始→成功報酬計上まで約3か月、報酬は2回分割（検証時50%・3か月後50%）。
-    ファネル量は 1か月目40%、2か月目70%、3か月目以降100% で立ち上がると仮定。"""
+def ramp(s: Scenario, months: int = 18, start_delay: int = 2, lag: int = 3) -> list[dict]:
+    """月次の立ち上がり（2026-11-10 経営判断を反映）。
+
+    - 最初の start_delay か月はヒアリング・弁護士レビュー期間で営業ファネルなし（固定費のみ）
+    - 営業開始後のファネル量は 40% → 70% → 100% で立ち上がる
+    - 診断から削減が実請求に反映されるまで lag か月
+    - 成功報酬は「実際に反映された削減額 × 25%」を反映月の翌月から最大 fee_months か月、毎月後払いで受領
+      （一括請求しない。月次の削減額は monthly_saving で一定と仮定）
+    """
     f = funnel(s)
-    ramp_factor = [0.4, 0.7] + [1.0] * (months - 2)
-    succ_by_month = [0.0] * (months + 10)
+    horizon = months + lag + s.fee_months + 2
+    ramp_factor = [0.0] * start_delay + [0.4, 0.7] + [1.0] * horizon
+    succ_by_month = [0.0] * horizon
     for m in range(months):
-        succ_by_month[m + 3] += f["successes"] * ramp_factor[m]  # 3か月ラグで削減確定
-    rows, watch_subs, cum = [], 0.0, 0.0
-    fee_unit = f["fee_per_success"] * (1 - s.bad_debt)
+        if m + lag < horizon:
+            succ_by_month[m + lag] += f["successes"] * ramp_factor[m]
+    monthly_fee_unit = s.monthly_saving * s.fee_rate * (1 - s.bad_debt)
     partner_ratio = (s.partner_diags / f["diags"]) if f["diags"] else 0
+    rows, watch_subs, cum = [], 0.0, 0.0
     for m in range(months):
-        first_half = succ_by_month[m] * fee_unit * 0.5
-        second_half = (succ_by_month[m - 3] if m >= 3 else 0) * fee_unit * 0.5
-        fee = first_half + second_half
+        # 反映月 k の顧客は k+1 〜 k+fee_months 月に報酬を支払う
+        paying = sum(succ_by_month[k] for k in range(max(0, m - s.fee_months), m))
+        fee = paying * monthly_fee_unit
         watch_subs = watch_subs * (1 - s.watch_churn) + succ_by_month[m] * s.watch_conv
         watch = watch_subs * s.watch_price
         audits = f["audits"] * ramp_factor[m]
-        cost = (audits * s.var_cost_audit + watch_subs * 500 + s.sales_cost + s.fixed_cost
+        sales_cost = s.sales_cost if m >= start_delay else 0
+        cost = (audits * s.var_cost_audit + watch_subs * 500 + sales_cost + s.fixed_cost
                 + fee * partner_ratio * s.partner_fee_share)
         profit = fee + watch - cost
         cum += profit
         rows.append(dict(month=m + 1, fee=fee, watch=watch, cost=cost, profit=profit, cum=cum,
-                         watch_subs=watch_subs))
+                         watch_subs=watch_subs, paying=paying))
     return rows
 
 
@@ -153,7 +162,9 @@ def render() -> str:
            "",
            "> `python3 finance/simulate.py` で再生成。前提値はすべて仮説であり、実績で置き換える。",
            "> 定常状態 = 立ち上がり完了後に毎月同じ件数が流れ続けた場合の月次値。MARGIN WATCH は 新規/解約率 で収束した契約数で、到達には数年かかる。",
-           "> **意思決定には「12か月目」と「WATCH除外」の数字を使うこと**（収束値は上限の目安）。",
+           "> **意思決定には「12か月目・18か月目」と「WATCH除外」の数字を使うこと**（収束値は上限の目安）。",
+           "> 成功報酬は月次後払い（最大12か月）のため、定常状態の売上は営業開始から約15か月後に到達する。",
+           "> 本シミュレーションは経営目標の試算であり、予測実績として外部に表示しない。",
            ""]
     out += ["## 1. EC事業者・3シナリオ（定常状態）", "",
             "| 指標 | " + " | ".join(s.name for s in (EC_PESSIMISTIC, EC_STANDARD, EC_OPTIMISTIC)) + " |",
@@ -183,37 +194,44 @@ def render() -> str:
         out.append(f"| {label} | " + " | ".join(fn(s, f) for s, f in zip(ss, fs)) + " |")
     out.append("")
 
-    out += ["## 2. 12か月の立ち上がり（標準シナリオ）", "",
-            "| 月 | 成功報酬 | WATCH売上 | WATCH契約数 | 費用 | 営業利益 | 累積利益 |",
-            "|---:|---:|---:|---:|---:|---:|---:|"]
+    out += ["## 2. 18か月の立ち上がり（標準シナリオ）", "",
+            "前提：1〜2か月目はヒアリング・弁護士レビューで営業なし。3か月目から営業開始。"
+            "成功報酬は実請求に反映された削減額の25%を最大12か月、毎月後払い（2026-11-10 経営判断）。", "",
+            "| 月 | 報酬支払中の顧客数 | 成功報酬 | WATCH売上 | WATCH契約数 | 費用 | 営業利益 | 累積利益 |",
+            "|---:|---:|---:|---:|---:|---:|---:|---:|"]
     for r in ramp(EC_STANDARD):
-        out.append(f"| {r['month']} | {yen(r['fee'])} | {yen(r['watch'])} | {r['watch_subs']:.1f} | "
+        out.append(f"| {r['month']} | {r['paying']:.1f} | {yen(r['fee'])} | {yen(r['watch'])} | {r['watch_subs']:.1f} | "
                    f"{yen(r['cost'])} | {yen(r['profit'])} | {yen(r['cum'])} |")
     out.append("")
     for label, sc in (("悲観", EC_PESSIMISTIC), ("楽観", EC_OPTIMISTIC)):
         r = ramp(sc)
         first = next((x["month"] for x in r if x["profit"] >= TARGET_PROFIT), None)
-        out.append(f"- {label}: 12か月目の営業利益 {yen(r[-1]['profit'])}円、累積 {yen(r[-1]['cum'])}円、"
-                   f"月利益50万円到達 {'%dか月目' % first if first else '12か月以内に未達'}")
+        be = next((x["month"] for x in r if x["cum"] >= 0), None)
+        out.append(f"- {label}: 12か月目の営業利益 {yen(r[11]['profit'])}円、18か月目 {yen(r[-1]['profit'])}円、累積 {yen(r[-1]['cum'])}円、"
+                   f"月利益50万円到達 {'%dか月目' % first if first else '18か月以内に未達'}、"
+                   f"累積黒字化 {'%dか月目' % be if be else '18か月以内に未達'}")
     r = ramp(EC_STANDARD)
     first = next((x["month"] for x in r if x["profit"] >= TARGET_PROFIT), None)
-    out.append(f"- 標準: 月利益50万円到達 {'%dか月目' % first if first else '12か月以内に未達'}")
+    be = next((x["month"] for x in r if x["cum"] >= 0), None)
+    out.append(f"- 標準: 12か月目の営業利益 {yen(r[11]['profit'])}円、月利益50万円到達 {'%dか月目' % first if first else '18か月以内に未達'}、"
+               f"累積黒字化 {'%dか月目' % be if be else '18か月以内に未達'}")
     out.append("")
 
     out += ["## 3. 収益モデル比較（定常状態）", "",
-            "| モデル | 成功件数/月 | 成功報酬 | WATCH売上(収束値) | 費用 | 営業利益(収束値) | 12か月目利益 | 必要成功件数(WATCH除外) | 作業時間 |",
-            "|---|---:|---:|---:|---:|---:|---:|---:|---:|"]
+            "| モデル | 成功件数/月 | 成功報酬 | WATCH売上(収束値) | 費用 | 営業利益(収束値) | 12か月目利益 | 18か月目利益 | 必要成功件数(WATCH除外) | 作業時間 |",
+            "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
     for label, sc in MODELS.items():
         f = funnel(sc)
-        m12 = ramp(sc)[-1]["profit"]
+        r = ramp(sc)
         out.append(f"| {label} | {f['successes']:.2f} | {yen(f['fee_rev'])} | {yen(f['watch_rev_ss'])} | "
-                   f"{yen(f['cost'])} | {yen(f['profit_ss'])} | {yen(m12)} | {f['need_success']:.1f} | {f['hours']:.0f}h |")
+                   f"{yen(f['cost'])} | {yen(f['profit_ss'])} | {yen(r[11]['profit'])} | {yen(r[-1]['profit'])} | "
+                   f"{f['need_success']:.1f} | {f['hours']:.0f}h |")
     out.append("")
 
     f = funnel(SALON_STANDARD)
     out += ["## 4. 参考：美容室を初期市場にした場合（標準）", "",
             f"- 成功報酬/社: {yen(f['fee_per_success'])}円、成功件数/月: {f['successes']:.2f}",
-            f"- 12か月目営業利益: {yen(ramp(SALON_STANDARD)[-1]['profit'])}円/月、収束値: {yen(f['profit_ss'])}円/月、月利益50万円に必要な成功件数: {f['need_success']:.1f}件/月",
+            f"- 12か月目営業利益: {yen(ramp(SALON_STANDARD)[11]['profit'])}円/月、収束値: {yen(f['profit_ss'])}円/月、月利益50万円に必要な成功件数: {f['need_success']:.1f}件/月",
             f"- 必要成功件数を満たすための月間無料診断数（契約率{SALON_STANDARD.contract_rate:.0%}×成功率{SALON_STANDARD.success_rate:.0%}）: "
             f"{f['need_success'] / (SALON_STANDARD.contract_rate * SALON_STANDARD.success_rate):.0f}件/月",
             ""]

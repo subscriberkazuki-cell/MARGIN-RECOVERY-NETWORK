@@ -13,6 +13,7 @@ LLM はこの出力の文章化・顧客説明にのみ使う（数値は必ず�
     tracking_no, ship_date, carrier, service, billed_size, weight_kg,
     length_cm, width_cm, height_cm, dest_pref, charged_yen
     ※ 寸法・重量が空欄の行はサイズ判定系チェックを行わない（請求額チェックのみ）。
+    ※ 不正な行は黙って捨てず「入力データの問題」として報告する（仕様: tools/audit/INPUT_SPEC.md）。
 
 指摘の種類と確度:
     DUPLICATE_CHARGE      確定  同一追跡番号の重複請求
@@ -58,8 +59,55 @@ class Finding:
 
 
 def _num(v: str | None) -> float | None:
-    v = (v or "").strip()
+    v = (v or "").strip().replace(",", "")
     return float(v) if v else None
+
+
+@dataclass
+class InputIssue:
+    """監査できなかった行・注意が必要な行。黙って捨てずに必ず報告する。"""
+    level: str          # "ERROR"（その行は監査対象外）/ "WARN"（一部チェックのみ実施）
+    line: int           # CSV の行番号（ヘッダ=1）
+    tracking_no: str
+    message: str
+
+
+def validate_row(r: dict, line: int, ratecard: dict) -> list[InputIssue]:
+    tn = (r.get("tracking_no") or "").strip()
+    issues: list[InputIssue] = []
+    if not tn:
+        issues.append(InputIssue("ERROR", line, "", "追跡番号が空欄"))
+    for key in ("carrier", "service", "billed_size"):
+        if not (r.get(key) or "").strip():
+            issues.append(InputIssue("ERROR", line, tn, f"{key} が空欄"))
+    try:
+        v = _num(r.get("charged_yen"))
+        if v is None:
+            issues.append(InputIssue("ERROR", line, tn, "charged_yen（運賃）が空欄"))
+        elif v < 0:
+            issues.append(InputIssue("ERROR", line, tn, f"charged_yen が負の値: {v}"))
+    except ValueError:
+        issues.append(InputIssue("ERROR", line, tn, f"charged_yen が数値でない: {r.get('charged_yen')!r}"))
+    try:
+        dims = [_num(r.get(k)) for k in ("length_cm", "width_cm", "height_cm")]
+        w = _num(r.get("weight_kg"))
+        present = [d for d in dims if d is not None]
+        if 0 < len(present) < 3:
+            issues.append(InputIssue("WARN", line, tn, "3辺寸法の一部のみ入力。サイズ判定をスキップ"))
+        if any(d is not None and d <= 0 for d in dims + [w]):
+            issues.append(InputIssue("WARN", line, tn, "寸法または重量が0以下。サイズ判定をスキップ"))
+    except ValueError:
+        issues.append(InputIssue("WARN", line, tn, "寸法・重量に数値でない値。サイズ判定をスキップ"))
+    if not any(i.level == "ERROR" for i in issues):
+        key = f"{r['carrier'].strip()}:{r['service'].strip()}"
+        svc = ratecard.get("services", {}).get(key)
+        if svc is None:
+            issues.append(InputIssue("WARN", line, tn, f"契約運賃表に {key} がない。契約単価・サイズの照合不可"))
+        elif r["billed_size"].strip() not in svc["sizes"]:
+            issues.append(InputIssue("WARN", line, tn, f"契約運賃表に {r['billed_size'].strip()} サイズがない。契約単価の照合不可"))
+        elif r.get("dest_pref") is None or not r.get("dest_pref", "").strip():
+            issues.append(InputIssue("WARN", line, tn, "届け先都道府県が空欄。地域別単価の照合は基本単価で実施"))
+    return issues
 
 
 def load_shipments(path: Path) -> list[dict]:
@@ -96,13 +144,19 @@ def fits_small_packet(sp: dict, dims: list[float], weight: float) -> bool:
             and middle <= sp["max_short_cm"] and weight <= sp["max_kg"])
 
 
-def audit(rows: list[dict], ratecard: dict) -> list[Finding]:
+def audit(rows: list[dict], ratecard: dict, issues: list[InputIssue] | None = None) -> list[Finding]:
+    """issues にリストを渡すと、入力の問題（ERROR/WARN）を追記する。ERROR 行は監査しない。"""
     findings: list[Finding] = []
     seen: dict[str, int] = defaultdict(int)
     small_packet = ratecard.get("small_packet")
-    for r in rows:
+    for line, r in enumerate(rows, start=2):
+        row_issues = validate_row(r, line, ratecard)
+        if issues is not None:
+            issues.extend(row_issues)
+        if any(i.level == "ERROR" for i in row_issues):
+            continue
         tn = r["tracking_no"].strip()
-        charged = int(float(r["charged_yen"]))
+        charged = int(_num(r["charged_yen"]))
         carrier, service, size = r["carrier"].strip(), r["service"].strip(), r["billed_size"].strip()
         pref = (r.get("dest_pref") or "").strip()
         seen[tn] += 1
@@ -115,6 +169,8 @@ def audit(rows: list[dict], ratecard: dict) -> list[Finding]:
             findings.append(Finding("OVER_CONTRACT_RATE", tn, r["ship_date"],
                                     f"{carrier} {service} {size}サイズ 契約単価{expected:,}円に対し{charged:,}円",
                                     charged, expected))
+        if any(i.message.endswith("サイズ判定をスキップ") for i in row_issues):
+            continue
         dims = [_num(r.get(k)) for k in ("length_cm", "width_cm", "height_cm")]
         weight = _num(r.get("weight_kg"))
         if None in dims or weight is None:
@@ -139,8 +195,18 @@ def audit(rows: list[dict], ratecard: dict) -> list[Finding]:
     return findings
 
 
-def summarize(rows: list[dict], findings: list[Finding], months: float) -> dict:
-    total = sum(int(float(r["charged_yen"])) for r in rows)
+def _safe_yen(v: str | None) -> int:
+    try:
+        n = _num(v)
+        return int(n) if n is not None and n >= 0 else 0
+    except ValueError:
+        return 0
+
+
+def summarize(rows: list[dict], findings: list[Finding], months: float,
+              issues: list[InputIssue] | None = None) -> dict:
+    issues = issues or []
+    total = sum(_safe_yen(r.get("charged_yen")) for r in rows)
     by_kind: dict[str, dict] = {}
     for f in findings:
         k = by_kind.setdefault(f.kind, {"count": 0, "diff_yen": 0})
@@ -157,10 +223,14 @@ def summarize(rows: list[dict], findings: list[Finding], months: float) -> dict:
         "by_kind": by_kind,
         "confirmed_yen": sum(v["diff_yen"] for k, v in by_kind.items() if CONFIDENCE[k] == "確定"),
         "potential_monthly_yen": sum(v["monthly_yen"] for v in by_kind.values()),
+        "input_errors": sum(1 for i in issues if i.level == "ERROR"),
+        "input_warnings": sum(1 for i in issues if i.level == "WARN"),
     }
 
 
-def render_md(summary: dict, findings: list[Finding], client: str) -> str:
+def render_md(summary: dict, findings: list[Finding], client: str,
+              issues: list[InputIssue] | None = None) -> str:
+    issues = issues or []
     s = summary
     lines = [
         f"# 配送費監査 一次結果：{client}",
@@ -171,6 +241,8 @@ def render_md(summary: dict, findings: list[Finding], client: str) -> str:
         f"- 対象出荷数: {s['shipments']:,}件 / 対象期間: {s['period_months']}か月 / 請求総額: {s['total_charged_yen']:,}円",
         f"- 確定した過請求額（期間中）: **{s['confirmed_yen']:,}円**",
         f"- 改善余地の月額換算（全区分合計・確認前）: **{s['potential_monthly_yen']:,}円/月**",
+        f"- 入力データの問題: エラー {s.get('input_errors', 0)}行（監査対象外）／警告 {s.get('input_warnings', 0)}件"
+        "（年額換算は期間中の発生率が続く前提。重複請求など単発の差異は年額換算をそのまま使わない）",
         "",
         "| 区分 | 確度 | 件数 | 期間中の差額 | 月額換算 | 年額換算 |",
         "|---|---|---:|---:|---:|---:|",
@@ -186,6 +258,11 @@ def render_md(summary: dict, findings: list[Finding], client: str) -> str:
     for f in findings[:50]:
         lines.append(f"| {LABEL[f.kind]} | {f.tracking_no} | {f.ship_date} | {f.detail} | "
                      f"{f.charged_yen:,} | {f.expected_yen:,} | {f.diff_yen:,} |")
+    if issues:
+        lines += ["", "## 入力データの問題（先頭50件）", "",
+                  "| 区分 | CSV行 | 追跡番号 | 内容 |", "|---|---:|---|---|"]
+        for i in issues[:50]:
+            lines.append(f"| {i.level} | {i.line} | {i.tracking_no} | {i.message} |")
     return "\n".join(lines) + "\n"
 
 
@@ -200,15 +277,17 @@ def main() -> None:
     a = ap.parse_args()
     rows = load_shipments(a.shipments)
     ratecard = json.loads(a.ratecard.read_text(encoding="utf-8"))
-    findings = audit(rows, ratecard)
-    summary = summarize(rows, findings, a.months)
-    md = render_md(summary, findings, a.client)
+    issues: list[InputIssue] = []
+    findings = audit(rows, ratecard, issues)
+    summary = summarize(rows, findings, a.months, issues)
+    md = render_md(summary, findings, a.client, issues)
     if a.out_md:
         a.out_md.write_text(md, encoding="utf-8")
     if a.out_json:
         a.out_json.write_text(json.dumps(
-            {"summary": summary, "findings": [asdict(f) | {"diff_yen": f.diff_yen, "confidence": CONFIDENCE[f.kind]}
-                                              for f in findings]},
+            {"summary": summary,
+             "findings": [asdict(f) | {"diff_yen": f.diff_yen, "confidence": CONFIDENCE[f.kind]} for f in findings],
+             "input_issues": [asdict(i) for i in issues]},
             ensure_ascii=False, indent=2), encoding="utf-8")
     if not a.out_md:
         print(md)

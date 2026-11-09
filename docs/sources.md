@@ -53,6 +53,20 @@
 | Vercel Hobby は非商用限定、Pro $20/席 | [Vercel公式 Hobby](https://vercel.com/docs/plans/hobby-plan) |
 | Explee 料金（情報が不一致） | [Salesforge レビュー](https://www.salesforge.ai/blog/explee-review)、[xpay](https://www.xpay.sh/saas-pricing/explee)、[G2](https://www.g2.com/products/explee/pricing) |
 
+## 2026-11-10 経営判断報告書で追加された出典
+
+| 内容 | 出典 |
+|---|---|
+| 合同会社の設立（定款認証不要、登録免許税 0.7%・最低6万円） | [法務省](https://www.moj.go.jp/MINJI/minji06_00141.html) |
+| 青色申告承認申請の期限 | [国税庁](https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/2070.htm) |
+| 社会保険の適用事業所・役員の扱い | [日本年金機構](https://www.nenkin.go.jp/service/kounen/tekiyo/jigyosho/20150518.html)、[同 書類一覧](https://www.nenkin.go.jp/shinsei/kounen/tekiyo/kanyuichiran.html)、[厚生労働省 通知](https://www.mhlw.go.jp/web/t_doc?dataId=00tc9843&dataType=1&pageNo=1) |
+| 弁護士法（第72条） | [e-Gov法令検索](https://laws.e-gov.go.jp/law/324AC1000000205) |
+| AI等を用いた契約書等関連業務支援サービスと弁護士法72条 | [法務省](https://www.moj.go.jp/content/001400675.pdf) |
+| 最高裁 平成22年7月20日（72条違反事件） | [判例概要](https://roppolab.jp/hanrei/80472) |
+| 個人情報保護法ガイドライン（通則編）：委託先の監督・安全管理措置 | [個人情報保護委員会](https://www.ppc.go.jp/personalinfo/legal/guidelines_tsusoku/) |
+| Claude Cowork 定期タスク・クラウド実行 | [Claude ヘルプ（定期タスク）](https://support.claude.com/ja/articles/13854387-claude-cowork-%E3%81%A7%E5%AE%9A%E6%9C%9F%E7%9A%84%E3%81%AA%E3%82%BF%E3%82%B9%E3%82%AF%E3%82%92%E3%82%B9%E3%82%B1%E3%82%B8%E3%83%A5%E3%83%BC%E3%83%AB%E8%A8%AD%E5%AE%9A%E3%81%99%E3%82%8B)、[Claude ヘルプ（Web/デスクトップ/モバイル）](https://support.claude.com/en/articles/15520349-use-claude-cowork-on-web-desktop-and-mobile) |
+| Supabase 料金（Freeは非アクティブ時に停止） | [Supabase Pricing](https://supabase.com/pricing) |
+
 ## 未確認（公式確認が必要）
 
 - Google Workspace、Supabase、Cloudflare Pages、Claude API の現行料金
