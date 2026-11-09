@@ -1,0 +1,16 @@
+{
+  "_note": "架空のサンプル料金表。実在の運送会社の料金ではない。サイズ区分の上限は顧客の契約書・運送約款で必ず確認すること。",
+  "client": "サンプル商店（架空）",
+  "services": {
+    "宅配便A:通常": {
+      "sizes": {
+        "60":  {"max_sum_cm": 60,  "max_kg": 2,  "price": 720, "pref_prices": {"北海道": 1150, "沖縄県": 1450}},
+        "80":  {"max_sum_cm": 80,  "max_kg": 5,  "price": 930, "pref_prices": {"北海道": 1400, "沖縄県": 1900}},
+        "100": {"max_sum_cm": 100, "max_kg": 10, "price": 1180, "pref_prices": {"北海道": 1700, "沖縄県": 2500}},
+        "120": {"max_sum_cm": 120, "max_kg": 15, "price": 1450},
+        "140": {"max_sum_cm": 140, "max_kg": 20, "price": 1750}
+      }
+    }
+  },
+  "small_packet": {"name": "小型薄型便（サンプル）", "max_thickness_cm": 3, "max_long_cm": 34, "max_short_cm": 25, "max_kg": 1, "price": 330}
+}

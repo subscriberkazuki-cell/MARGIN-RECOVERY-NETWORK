@@ -1,0 +1,237 @@
+{
+  "summary": {
+    "shipments": 62,
+    "total_charged_yen": 70260,
+    "period_months": 1.0,
+    "by_kind": {
+      "SMALL_PACKET_ELIGIBLE": {
+        "count": 6,
+        "diff_yen": 4230,
+        "monthly_yen": 4230,
+        "annual_yen": 50760
+      },
+      "SIZE_OVERBILLED": {
+        "count": 6,
+        "diff_yen": 1500,
+        "monthly_yen": 1500,
+        "annual_yen": 18000
+      },
+      "OVER_CONTRACT_RATE": {
+        "count": 6,
+        "diff_yen": 660,
+        "monthly_yen": 660,
+        "annual_yen": 7920
+      },
+      "DUPLICATE_CHARGE": {
+        "count": 2,
+        "diff_yen": 3950,
+        "monthly_yen": 3950,
+        "annual_yen": 47400
+      }
+    },
+    "confirmed_yen": 4610,
+    "potential_monthly_yen": 10340
+  },
+  "findings": [
+    {
+      "kind": "SMALL_PACKET_ELIGIBLE",
+      "tracking_no": "SMP000003",
+      "ship_date": "2026-10-04",
+      "detail": "厚さ2.5cm/0.4kg → 小型薄型便（サンプル）（330円）対象の可能性",
+      "charged_yen": 1450,
+      "expected_yen": 330,
+      "diff_yen": 1120,
+      "confidence": "推定"
+    },
+    {
+      "kind": "SIZE_OVERBILLED",
+      "tracking_no": "SMP000004",
+      "ship_date": "2026-10-05",
+      "detail": "実測 3辺計75cm/3.0kg → 80サイズ相当だが100サイズで請求",
+      "charged_yen": 1180,
+      "expected_yen": 930,
+      "diff_yen": 250,
+      "confidence": "要確認"
+    },
+    {
+      "kind": "OVER_CONTRACT_RATE",
+      "tracking_no": "SMP000005",
+      "ship_date": "2026-10-06",
+      "detail": "宅配便A 通常 80サイズ 契約単価930円に対し1,040円",
+      "charged_yen": 1040,
+      "expected_yen": 930,
+      "diff_yen": 110,
+      "confidence": "確定"
+    },
+    {
+      "kind": "SMALL_PACKET_ELIGIBLE",
+      "tracking_no": "SMP000013",
+      "ship_date": "2026-10-14",
+      "detail": "厚さ2.5cm/0.4kg → 小型薄型便（サンプル）（330円）対象の可能性",
+      "charged_yen": 1450,
+      "expected_yen": 330,
+      "diff_yen": 1120,
+      "confidence": "推定"
+    },
+    {
+      "kind": "SIZE_OVERBILLED",
+      "tracking_no": "SMP000014",
+      "ship_date": "2026-10-15",
+      "detail": "実測 3辺計75cm/3.0kg → 80サイズ相当だが100サイズで請求",
+      "charged_yen": 1180,
+      "expected_yen": 930,
+      "diff_yen": 250,
+      "confidence": "要確認"
+    },
+    {
+      "kind": "OVER_CONTRACT_RATE",
+      "tracking_no": "SMP000015",
+      "ship_date": "2026-10-16",
+      "detail": "宅配便A 通常 80サイズ 契約単価930円に対し1,040円",
+      "charged_yen": 1040,
+      "expected_yen": 930,
+      "diff_yen": 110,
+      "confidence": "確定"
+    },
+    {
+      "kind": "SMALL_PACKET_ELIGIBLE",
+      "tracking_no": "SMP000023",
+      "ship_date": "2026-10-24",
+      "detail": "厚さ2.5cm/0.4kg → 小型薄型便（サンプル）（330円）対象の可能性",
+      "charged_yen": 720,
+      "expected_yen": 330,
+      "diff_yen": 390,
+      "confidence": "推定"
+    },
+    {
+      "kind": "SIZE_OVERBILLED",
+      "tracking_no": "SMP000024",
+      "ship_date": "2026-10-25",
+      "detail": "実測 3辺計75cm/3.0kg → 80サイズ相当だが100サイズで請求",
+      "charged_yen": 1180,
+      "expected_yen": 930,
+      "diff_yen": 250,
+      "confidence": "要確認"
+    },
+    {
+      "kind": "OVER_CONTRACT_RATE",
+      "tracking_no": "SMP000025",
+      "ship_date": "2026-10-26",
+      "detail": "宅配便A 通常 80サイズ 契約単価930円に対し1,040円",
+      "charged_yen": 1040,
+      "expected_yen": 930,
+      "diff_yen": 110,
+      "confidence": "確定"
+    },
+    {
+      "kind": "SMALL_PACKET_ELIGIBLE",
+      "tracking_no": "SMP000033",
+      "ship_date": "2026-10-06",
+      "detail": "厚さ2.5cm/0.4kg → 小型薄型便（サンプル）（330円）対象の可能性",
+      "charged_yen": 720,
+      "expected_yen": 330,
+      "diff_yen": 390,
+      "confidence": "推定"
+    },
+    {
+      "kind": "SIZE_OVERBILLED",
+      "tracking_no": "SMP000034",
+      "ship_date": "2026-10-07",
+      "detail": "実測 3辺計75cm/3.0kg → 80サイズ相当だが100サイズで請求",
+      "charged_yen": 1180,
+      "expected_yen": 930,
+      "diff_yen": 250,
+      "confidence": "要確認"
+    },
+    {
+      "kind": "OVER_CONTRACT_RATE",
+      "tracking_no": "SMP000035",
+      "ship_date": "2026-10-08",
+      "detail": "宅配便A 通常 80サイズ 契約単価1,400円に対し1,510円",
+      "charged_yen": 1510,
+      "expected_yen": 1400,
+      "diff_yen": 110,
+      "confidence": "確定"
+    },
+    {
+      "kind": "SMALL_PACKET_ELIGIBLE",
+      "tracking_no": "SMP000043",
+      "ship_date": "2026-10-16",
+      "detail": "厚さ2.5cm/0.4kg → 小型薄型便（サンプル）（330円）対象の可能性",
+      "charged_yen": 720,
+      "expected_yen": 330,
+      "diff_yen": 390,
+      "confidence": "推定"
+    },
+    {
+      "kind": "SIZE_OVERBILLED",
+      "tracking_no": "SMP000044",
+      "ship_date": "2026-10-17",
+      "detail": "実測 3辺計75cm/3.0kg → 80サイズ相当だが100サイズで請求",
+      "charged_yen": 1180,
+      "expected_yen": 930,
+      "diff_yen": 250,
+      "confidence": "要確認"
+    },
+    {
+      "kind": "OVER_CONTRACT_RATE",
+      "tracking_no": "SMP000045",
+      "ship_date": "2026-10-18",
+      "detail": "宅配便A 通常 80サイズ 契約単価1,400円に対し1,510円",
+      "charged_yen": 1510,
+      "expected_yen": 1400,
+      "diff_yen": 110,
+      "confidence": "確定"
+    },
+    {
+      "kind": "SMALL_PACKET_ELIGIBLE",
+      "tracking_no": "SMP000053",
+      "ship_date": "2026-10-26",
+      "detail": "厚さ2.5cm/0.4kg → 小型薄型便（サンプル）（330円）対象の可能性",
+      "charged_yen": 1150,
+      "expected_yen": 330,
+      "diff_yen": 820,
+      "confidence": "推定"
+    },
+    {
+      "kind": "SIZE_OVERBILLED",
+      "tracking_no": "SMP000054",
+      "ship_date": "2026-10-27",
+      "detail": "実測 3辺計75cm/3.0kg → 80サイズ相当だが100サイズで請求",
+      "charged_yen": 1180,
+      "expected_yen": 930,
+      "diff_yen": 250,
+      "confidence": "要確認"
+    },
+    {
+      "kind": "OVER_CONTRACT_RATE",
+      "tracking_no": "SMP000055",
+      "ship_date": "2026-10-28",
+      "detail": "宅配便A 通常 80サイズ 契約単価930円に対し1,040円",
+      "charged_yen": 1040,
+      "expected_yen": 930,
+      "diff_yen": 110,
+      "confidence": "確定"
+    },
+    {
+      "kind": "DUPLICATE_CHARGE",
+      "tracking_no": "SMP000012",
+      "ship_date": "2026-10-13",
+      "detail": "追跡番号 SMP000012 が2回目の請求",
+      "charged_yen": 1450,
+      "expected_yen": 0,
+      "diff_yen": 1450,
+      "confidence": "確定"
+    },
+    {
+      "kind": "DUPLICATE_CHARGE",
+      "tracking_no": "SMP000028",
+      "ship_date": "2026-10-01",
+      "detail": "追跡番号 SMP000028 が2回目の請求",
+      "charged_yen": 2500,
+      "expected_yen": 0,
+      "diff_yen": 2500,
+      "confidence": "確定"
+    }
+  ]
+}

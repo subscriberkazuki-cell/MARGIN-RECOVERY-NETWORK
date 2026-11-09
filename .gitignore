@@ -1,0 +1,8 @@
+# 顧客の実データは絶対にコミットしない
+client_data/
+*.client.csv
+ratecard_*.json
+!tools/audit/samples/ratecard_sample.json
+__pycache__/
+*.pyc
+.DS_Store
