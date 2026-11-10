@@ -120,6 +120,26 @@ td.r{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
   </div>
 
   <div id="report"></div>
+
+  <div id="feedback" class="no-print" style="display:none;margin-top:16px">
+    <form id="fbf" onsubmit="return false" autocomplete="off"><fieldset><legend>振り返り（オーナーさんとの話が終わったら記入・約3分）</legend>
+      <p class="hint">ここで作る文章には、店名・個別の金額は入りません。そのまま Claude に貼り付けて大丈夫です。</p>
+      <div class="grid">
+        <div><label>お店の種類</label><select name="fb_type"><option>美容室</option><option>ネイル</option><option>エステ</option><option>まつげ</option><option>その他</option></select></div>
+        <div><label>店舗数</label><input name="fb_stores" type="number" min="1" value="1"></div>
+        <div><label>全体の所要時間（分）</label><input name="fb_minutes" type="number" min="0" placeholder="60"></div>
+        <div><label>知らない店なら、いくら払うと思うか</label><select name="fb_price"><option value="">（未回答）</option><option>払わない</option><option>9,800円なら</option><option>19,800円なら</option><option>それ以上でも</option></select></div>
+        <div><label>紹介してもらえそうな人数</label><input name="fb_refs" type="number" min="0" placeholder="2"></div>
+        <div><label>入力に一番時間がかかった項目</label><select name="fb_slow"><option value="">（特になし）</option><option>1. 基本</option><option>2. 決済</option><option>3. ツール</option><option>4. 回線</option><option>5. 電気</option><option>6. 集客</option><option>7. 税理士・記帳</option></select></div>
+      </div>
+      <label>答えられなかった・分かりにくかった質問</label><div class="checks" id="fb_hard"></div>
+      <label>オーナーさんが「やってみる」と言った項目</label><div class="checks" id="fb_act"></div>
+      <label>一番困っていること（集客・人・お金など）</label><input name="fb_pain" placeholder="例：新規が減っている">
+      <label>メモ（店名・金額は書かない）</label><input name="fb_memo">
+      <div class="actions" style="margin-top:12px"><button type="button" id="fb_copy">Claude に送る振り返りをコピー</button></div>
+      <textarea id="fb_text" readonly style="width:100%;min-height:220px;display:none;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:8px;font-size:13px"></textarea>
+    </fieldset></form>
+  </div>
 </div>
 
 <script id="benchmarks" type="application/json">
@@ -351,7 +371,49 @@ function render(a){
     ${res.notes.length ? `<h2 style="margin-top:20px">問題が見つからなかった項目・判定できなかった項目</h2><ul>${res.notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}
     <p class="disclaimer">確度：確定＝回答どおりなら確実に減らせる／推定＝条件の変更が前提の見込み／要確認＝金額を出さず、比較が必要な項目。比較基準（${BM.checked_at} 確認）：${Object.entries(BM.sources).map(([k, v]) => esc(k + '：' + v)).join('／')}</p>`;
   el.style.display = 'block'; el.scrollIntoView({behavior:'smooth'});
+  showFeedback(res, a);
 }
+// ---- 振り返り（店名・個別金額を含まない要約を作る） ----
+let LAST = null;
+const SECTIONS = ['1. 基本', '2. 決済', '3. ツール', '4. 回線', '5. 電気', '6. 集客', '7. 税理士・記帳'];
+document.getElementById('fb_hard').innerHTML = SECTIONS.map(s => `<label><input type="checkbox" value="${s}">${s}</label>`).join('');
+function revenueBand(m){ const y = m * 12; return !y ? '不明' : y < 10000000 ? '1,000万円未満' : y < 30000000 ? '1,000万〜3,000万円' : '3,000万円以上'; }
+function round1000(v){ return Math.round(v / 1000) * 1000; }
+function showFeedback(res, a){
+  LAST = {res, a};
+  const areas = [...new Set(res.items.map(i => i.area))];
+  document.getElementById('fb_act').innerHTML = areas.map(s => `<label><input type="checkbox" value="${s}">${s}</label>`).join('') || '<span class="hint">見直し候補なし</span>';
+  document.getElementById('feedback').style.display = 'block';
+}
+function feedbackText(){
+  const {res, a} = LAST, E = document.getElementById('fbf').elements, price = num('price') || 0;
+  const byArea = {};
+  res.items.forEach(i => { (byArea[i.area] = byArea[i.area] || []).push(i.confidence); });
+  const checked = id => [...document.querySelectorAll(`#${id} input:checked`)].map(c => c.value).join('、') || 'なし';
+  return [
+    '【サロン診断の振り返り（店名・個別金額なし）】',
+    `- お店：${E.fb_type.value}・${E.fb_stores.value || '?'}店舗・年商帯 ${revenueBand(a.monthly_revenue)}`,
+    `- 所要時間：${E.fb_minutes.value || '?'}分`,
+    `- 見直し余地の合計：月 約${yen(round1000(res.monthly_low))}〜${yen(round1000(res.monthly_high))}円`,
+    `- 年間の上限が診断料（${yen(price)}円）を超えたか：${res.monthly_high * 12 >= price ? 'はい' : 'いいえ（返金対象）'}`,
+    `- 見つかった項目：${Object.entries(byArea).map(([k, v]) => `${k}（${v.join('・')}）`).join('、') || 'なし'}`,
+    `- 入力しなかった・判定できなかった項目：${res.notes.length}件`,
+    `- 価格の反応：${E.fb_price.value || '未回答'}`,
+    `- 一番時間がかかった項目：${E.fb_slow.value || '特になし'}`,
+    `- 分かりにくかった質問：${checked('fb_hard')}`,
+    `- 「やってみる」と言った項目：${checked('fb_act')}`,
+    `- 一番困っていること：${E.fb_pain.value || '未記入'}`,
+    `- 紹介してもらえそうな人数：${E.fb_refs.value || '?'}人`,
+    `- メモ：${E.fb_memo.value || 'なし'}`,
+  ].join('\n');
+}
+document.getElementById('fb_copy').onclick = async () => {
+  const text = feedbackText(), box = document.getElementById('fb_text');
+  box.value = text; box.style.display = 'block'; box.select();
+  try { await navigator.clipboard.writeText(text); document.getElementById('fb_copy').textContent = 'コピーしました（下の文章をそのまま貼り付けてください）'; }
+  catch (e) { try { document.execCommand('copy'); document.getElementById('fb_copy').textContent = 'コピーしました'; } catch (_) { document.getElementById('fb_copy').textContent = '下の文章を選択してコピーしてください'; } }
+};
+
 F.onsubmit = e => { e.preventDefault(); const a = collect(); if (a.media.length && a._mediaIncomplete) a.media = []; render(a); };
 document.getElementById('print').onclick = () => { if (document.getElementById('report').style.display !== 'block') F.requestSubmit(); setTimeout(() => window.print(), 100); };
 document.getElementById('save').onclick = () => {
