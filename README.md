@@ -50,7 +50,8 @@ EC事業者向け 配送費・物流請求の監査事業（成功報酬＋継�
 
 | 成果物 | 内容 | 使い方 |
 |---|---|---|
-| **サロン固定費チェック（v0.3）** | 質問票の回答から、決済手数料・ツール重複・未使用回線・電気単価・集客の費用対効果を判定。確度（確定/推定/要確認）と根拠つき | `python3 tools/salon/fixed_cost_check.py --input tools/salon/samples/answers_sample.json`（テスト8件：`python3 -m unittest discover -s tools/salon/tests`） |
+| **サロン固定費チェック・ブラウザ版** | オフラインで動く1ファイルのHTML。オーナーと一緒に入力しその場で結果・PDF。外部通信なし | `tools/salon/check.html` をブラウザで開く |
+| **サロン固定費チェック（v0.3）** | 質問票の回答から、決済手数料・ツール重複・未使用回線・電気単価・集客の費用対効果を判定。確度（確定/推定/要確認）と根拠つき | `python3 tools/salon/fixed_cost_check.py --input tools/salon/samples/answers_sample.json`（テスト10件。ブラウザ版との一致確認を含む：`python3 -m unittest discover -s tools/salon/tests`） |
 | サロン定額モデル試算（v0.3） | 3シナリオ・18か月 | `python3 finance/simulate_salon.py` |
 | 宅配便請求監査エンジン | 請求CSV×契約運賃表を照合し、重複請求・契約単価超過・サイズ区分の過大候補・小型便候補を根拠付きで出力。不正な入力行は報告（仕様：[tools/audit/INPUT_SPEC.md](tools/audit/INPUT_SPEC.md)） | `python3 tools/audit/shipping_audit.py --shipments tools/audit/samples/shipments_sample.csv --ratecard tools/audit/samples/ratecard_sample.json` |
 | テスト | 判定ロジック・入力チェックの単体テスト（14件） | `python3 -m unittest discover -s tools/audit/tests` |
@@ -65,6 +66,6 @@ EC事業者向け 配送費・物流請求の監査事業（成功報酬＋継�
 | 優先 | アクション | 資料 |
 |---:|---|---|
 | 1 | 個人事業の開始準備（開業日・届出・青色申告・口座・ドメイン・MFA） | [docs/06_plan/03_個人事業開始と法人化判定.md](docs/06_plan/03_個人事業開始と法人化判定.md) |
-| 2 | ヒアリング候補のサロン30店・紹介元候補10者をリスト化し、知人・紹介経由で依頼 | `kpi/salon_candidates.csv` |
-| 3 | W2〜3でサロン10店ヒアリング、うち3店でテスト診断 | [サロン検証4週間計画](docs/06_plan/05_サロン検証4週間計画.md) |
-| 4 | サロン専門の税理士事務所3者に打診 | 同上 第6節 |
+| 2 | **協力店1店で初回テスト診断**（オフラインのブラウザ版ツールで、その場で判定） | [初回サロン実施ガイド](docs/06_plan/06_初回サロン実施ガイド.md)、[tools/salon/check.html](tools/salon/check.html) |
+| 3 | 協力店から2〜3店の紹介をもらい、W2〜3で計10店のヒアリング・テスト診断3件以上 | [サロン検証4週間計画](docs/06_plan/05_サロン検証4週間計画.md) |
+| 4 | 商品が機能すると確認できたら（W3以降）、紹介でつながれる税理士事務所に打診 | 同上 第6節 |

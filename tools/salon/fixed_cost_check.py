@@ -51,7 +51,8 @@ class Result:
 
 
 def _r(v: float) -> int:
-    return int(round(v / 100.0)) * 100  # 100円単位に丸める（精度を装わない）
+    """100円単位に四捨五入（精度を装わない）。ブラウザ版 check.html と同じ丸め方にする。"""
+    return int(v / 100.0 + 0.5) * 100 if v >= 0 else -int(-v / 100.0 + 0.5) * 100
 
 
 def check_payment(a: dict, bm: dict, res: Result) -> None:

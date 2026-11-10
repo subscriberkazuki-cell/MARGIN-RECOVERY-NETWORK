@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>サロン固定費チェック</title>
+<!-- 外部への通信は一切しない（フォント・スクリプトも読み込まない）。入力内容はこのブラウザの中だけで計算する。 -->
+<style>
+:root{--bg:#f7f5f0;--surface:#fff;--ink:#14213d;--muted:#5b6475;--line:#dcd7cc;--accent:#9a7b3f;--accent-ink:#fff;--ok:#2f6f4f;--warn:#9a5b1f}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0e1424;--surface:#151d31;--ink:#e9e6df;--muted:#a3abbb;--line:#2a3550;--accent:#c9a862;--accent-ink:#0e1424;--ok:#7cc4a0;--warn:#e0a46a}}
+:root[data-theme="dark"]{--bg:#0e1424;--surface:#151d31;--ink:#e9e6df;--muted:#a3abbb;--line:#2a3550;--accent:#c9a862;--accent-ink:#0e1424;--ok:#7cc4a0;--warn:#e0a46a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,"Hiragino Sans","Noto Sans JP",sans-serif;line-height:1.7;font-size:15px}
+.wrap{max-width:960px;margin:0 auto;padding:24px 16px 64px}
+h1{font-size:22px;margin:0 0 4px}
+h2{font-size:17px;margin:0 0 12px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.sub{color:var(--muted);font-size:13px;margin:0 0 20px}
+fieldset{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:16px;margin:0 0 16px}
+legend{font-weight:700;padding:0 6px}
+label{display:block;font-size:13px;color:var(--muted);margin:8px 0 2px}
+input,select{width:100%;padding:8px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink);font-size:15px}
+input[type=checkbox]{width:auto}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0 12px}
+@media (max-width:700px){.grid{grid-template-columns:1fr}}
+.row{display:grid;grid-template-columns:2fr 1fr 2fr 1fr auto;gap:8px;align-items:end;margin-bottom:8px}
+@media (max-width:700px){.row{grid-template-columns:1fr 1fr}}
+.row label{margin-top:0}
+.checks{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:13px}
+.checks label{display:flex;gap:4px;align-items:center;color:var(--ink);margin:0}
+button{background:var(--accent);color:var(--accent-ink);border:0;border-radius:4px;padding:10px 18px;font-weight:700;font-size:15px;cursor:pointer}
+button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);font-weight:400;padding:6px 12px;font-size:13px}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 24px}
+.hint{font-size:12px;color:var(--muted)}
+#report{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:20px;display:none}
+.big{font-size:22px;font-weight:700}
+.table-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:640px;font-size:13.5px;margin-top:12px}
+th,td{border:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}
+th{background:color-mix(in srgb,var(--accent) 12%,var(--surface))}
+td.r{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.tag{display:inline-block;font-size:11px;border:1px solid var(--line);border-radius:3px;padding:0 6px;white-space:nowrap}
+.tag.確定{border-color:var(--ok);color:var(--ok)}
+.tag.推定{border-color:var(--accent);color:var(--accent)}
+.tag.要確認{border-color:var(--warn);color:var(--warn)}
+.refund{border-left:4px solid var(--warn);padding:8px 12px;margin:12px 0;background:color-mix(in srgb,var(--warn) 8%,var(--surface))}
+.disclaimer{font-size:12px;color:var(--muted)}
+@media print{.no-print{display:none!important}#report{display:block!important;border:0;padding:0}body{background:#fff;color:#000}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="no-print">
+    <h1>サロン固定費チェック</h1>
+    <p class="sub">オーナーさんと一緒に入力し、その場で結果を出すための道具です。インターネットに接続せずに動き、入力内容はどこにも送信されません。分からない項目は空欄のままで構いません（その項目は判定しません）。</p>
+
+    <form id="f" autocomplete="off">
+      <fieldset><legend>1. 基本</legend>
+        <div class="grid">
+          <div><label>店名</label><input name="salon_name" placeholder="例：○○美容室"></div>
+          <div><label>月商（円・だいたい）</label><input name="monthly_revenue" type="number" min="0" step="10000" placeholder="2500000"></div>
+          <div><label>診断料（円）※返金判定に使う</label><input name="price" type="number" min="0" value="19800"></div>
+        </div>
+      </fieldset>
+
+      <fieldset><legend>2. キャッシュレス決済</legend>
+        <div class="grid">
+          <div><label>売上のうちキャッシュレスの割合（%）</label><input name="cashless_pct" type="number" min="0" max="100" placeholder="60"></div>
+          <div><label>クレジットカード手数料率（%）</label><input name="fee_pct" type="number" min="0" step="0.01" placeholder="3.24"></div>
+          <div><label>決済サービスの月額固定費（円）</label><input name="pay_fixed" type="number" min="0" placeholder="0"></div>
+        </div>
+      </fieldset>
+
+      <fieldset><legend>3. 予約・POS・カルテ・配信などのツール</legend>
+        <div id="tools"></div>
+        <button type="button" class="ghost" data-add="tools">＋ ツールを追加</button>
+        <p class="hint">主な機能にチェック。「直近3か月使った」のチェックを外すと「使っていない」として判定します。</p>
+      </fieldset>
+
+      <fieldset><legend>4. 電話・ネット回線</legend>
+        <div id="lines"></div>
+        <button type="button" class="ghost" data-add="lines">＋ 回線を追加</button>
+        <label>最後にプランを見直してから何年？</label><input name="years_since_review" type="number" min="0" placeholder="5" style="max-width:200px">
+      </fieldset>
+
+      <fieldset><legend>5. 電気（直近の検針票）</legend>
+        <div class="grid">
+          <div><label>プラン名</label><input name="elec_plan" placeholder="低圧電力＋従量電灯"></div>
+          <div><label>電気代（円/月）</label><input name="elec_cost" type="number" min="0"></div>
+          <div><label>使用量（kWh/月）</label><input name="elec_kwh" type="number" min="0"></div>
+        </div>
+      </fieldset>
+
+      <fieldset><legend>6. 集客媒体</legend>
+        <div id="media"></div>
+        <button type="button" class="ghost" data-add="media">＋ 媒体を追加</button>
+        <div class="grid" style="margin-top:8px">
+          <div><label>平均客単価（円）</label><input name="avg_ticket" type="number" min="0" placeholder="7500"></div>
+          <div><label>新規客が1年目に来る回数</label><input name="visits" type="number" min="0" step="0.1" placeholder="2.5"></div>
+          <div><label>粗利率（%・材料費などを引いた残り）</label><input name="gm_pct" type="number" min="0" max="100" placeholder="40"></div>
+        </div>
+      </fieldset>
+
+      <div class="actions">
+        <button type="submit">結果を出す</button>
+        <button type="button" class="ghost" id="print">結果を印刷・PDF保存</button>
+        <button type="button" class="ghost" id="save">回答を保存（JSON）</button>
+        <label class="ghost" style="display:inline-flex;align-items:center;gap:6px;margin:0;border:1px solid var(--line);border-radius:4px;padding:6px 12px;font-size:13px;color:var(--ink);cursor:pointer">回答を読み込む<input type="file" id="load" accept="application/json" style="display:none"></label>
+        <button type="button" class="ghost" id="sample">架空サンプルを入れる</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="report"></div>
+</div>
+
+<script id="benchmarks" type="application/json">
+{
+  "_note": "比較基準。すべて公開情報からの目安で、確認日を過ぎたら更新すること。架空値は入れない。",
+  "checked_at": "2026-11-10",
+  "payment": {
+    "alt_rate_low": 0.0248,
+    "alt_rate_high": 0.0298,
+    "_comment": "比較料率のレンジ。下限2.48%は Airペイの中小事業者向けプログラム（エントリー制・期間限定の可能性）、上限2.98%は保守側の仮置き（相場1.98〜3.24%の中央付近）。対象外の店舗もあるため結果は『推定』"
+  },
+  "telecom": {"review_after_years": 3},
+  "electricity": {
+    "caution": "低圧は燃料費調整・料金支援策で単価が毎月変動。市場連動型プランは高騰リスクがある。切替時は契約期間・解約金・燃料費調整の上限有無を確認"
+  },
+  "functions": {
+    "booking": "予約管理",
+    "pos": "レジ・会計",
+    "karte": "顧客カルテ",
+    "messaging": "顧客へのメッセージ配信",
+    "payroll": "給与・勤怠",
+    "accounting": "会計"
+  },
+  "sources": {
+    "決済手数料の相場 1.98〜3.24%": "ISSOH・PayRoute 等の解説（2026-11-09 確認）",
+    "Airペイ 中小事業者向け 2.48%": "Impress Watch https://www.watch.impress.co.jp/docs/news/1634404.html（2026-11-09 確認）",
+    "低圧電気の燃料費調整": "東京電力パワーグリッド・関西電力の公表資料（2026-11-09 確認）"
+  }
+}
+</script>
+
+<script id="logic">
+// 判定ロジック。tools/salon/fixed_cost_check.py と同じ結果になること（tests/test_check_html.py で照合）。
+function r100(v){ return v >= 0 ? Math.floor(v / 100 + 0.5) * 100 : -Math.floor(-v / 100 + 0.5) * 100; }
+function yen(v){ return Math.round(v).toLocaleString('ja-JP'); }
+function pct(v){ return (v * 100).toFixed(2) + '%'; }
+
+function runCheck(a, bm){
+  const items = [], notes = [];
+  // 1. 決済
+  const p = a.payment;
+  if (!p) notes.push('決済：未回答のため判定なし');
+  else {
+    const cashless = a.monthly_revenue * p.cashless_ratio, cur = p.card_fee_rate;
+    const lowRate = bm.payment.alt_rate_high, highRate = bm.payment.alt_rate_low;
+    const fixed = p.monthly_fixed_fee || 0;
+    const lo = r100(cashless * Math.max(cur - lowRate, 0)), hi = r100(cashless * Math.max(cur - highRate, 0) + fixed);
+    if (hi <= 0) notes.push(`決済：現在の料率 ${pct(cur)} は比較対象の範囲内。見直し余地なし`);
+    else items.push({area:'決済', title:'キャッシュレス決済手数料の料率見直し', confidence:'推定', monthly_low:lo, monthly_high:hi,
+      basis:`キャッシュレス売上 ${yen(cashless)}円/月 ×（現在 ${pct(cur)} − 比較料率 ${pct(highRate)}〜${pct(lowRate)}）` + (fixed ? ` ＋ 月額固定費 ${yen(fixed)}円` : ''),
+      action:'利用中の決済サービスの手数料プラン・中小事業者向けプログラムの有無を確認し、他サービスの料率と比較する',
+      caution:'端末の買い替え・入金サイクル・対応ブランド・既存契約の解約条件を確認。料率の税区分（税込/非課税）をそろえて比較する'});
+  }
+  // 2. ツール
+  const tools = a.tools || [];
+  const unusedPaid = t => (t.monthly_fee || 0) > 0 && t.used_last_3_months === false;
+  const byFunc = {};
+  tools.filter(t => !unusedPaid(t)).forEach(t => (t.functions || []).forEach(f => (byFunc[f] = byFunc[f] || []).push(t)));
+  Object.keys(byFunc).sort().forEach(func => {
+    const ts = byFunc[func], paid = ts.filter(t => (t.monthly_fee || 0) > 0);
+    if (ts.length >= 2 && paid.length) {
+      const cheapest = Math.min(...paid.map(t => t.monthly_fee)), names = ts.map(t => t.name).join('・');
+      items.push({area:'予約・POS・SaaS', title:`「${bm.functions[func] || func}」の機能が重複（${names}）`, confidence:'推定', monthly_low:0, monthly_high:cheapest,
+        basis:`同じ機能を持つツールが${ts.length}つ。うち有料の最安 ${yen(cheapest)}円/月`,
+        action:'どのツールで代替できるかを確認し、不要な方の解約・プラン変更を検討する',
+        caution:'顧客カルテ・予約データの移行、スタッフの操作変更、解約月・最低利用期間を確認'});
+    }
+  });
+  tools.filter(unusedPaid).forEach(t => items.push({area:'予約・POS・SaaS', title:`直近3か月使っていない有料ツール（${t.name}）`, confidence:'確定',
+    monthly_low:t.monthly_fee, monthly_high:t.monthly_fee, basis:`月額 ${yen(t.monthly_fee)}円、直近3か月の利用なし（オーナー回答）`,
+    action:'解約またはプラン変更', caution:'データのエクスポートが必要か確認'}));
+  // 3. 通信
+  const tc = a.telecom;
+  if (tc) {
+    (tc.lines || []).filter(l => l.in_use === false).forEach(l => items.push({area:'通信', title:`使っていない回線（${l.name}）`, confidence:'確定',
+      monthly_low:l.monthly_fee, monthly_high:l.monthly_fee, basis:`月額 ${yen(l.monthly_fee)}円、利用なし（オーナー回答）`, action:'解約', caution:'電話番号を残す必要があるか確認'}));
+    const total = (tc.lines || []).filter(l => l.in_use !== false).reduce((s, l) => s + l.monthly_fee, 0);
+    if (tc.years_since_review != null && tc.years_since_review >= bm.telecom.review_after_years && total > 0)
+      items.push({area:'通信', title:`${tc.years_since_review}年以上プランを見直していない回線（合計 ${yen(total)}円/月）`, confidence:'要確認', monthly_low:0, monthly_high:0,
+        basis:'見直し余地は契約内容次第のため金額は計上しない', action:'現在のプラン名・割引の適用状況を確認し、同等サービスの現行プランと比較する', caution:'契約期間・解約金、工事費の残債を確認'});
+  }
+  // 4. 電気
+  const e = a.electricity;
+  if (e) {
+    if (!e.monthly_kwh) notes.push('電気：使用量(kWh)が未回答のため単価を算出できない');
+    else {
+      const unit = e.monthly_cost / e.monthly_kwh;
+      items.push({area:'電気', title:`電気の実質単価 ${unit.toFixed(1)}円/kWh（${e.plan || 'プラン不明'}）`, confidence:'要確認', monthly_low:0, monthly_high:0,
+        basis:`月額 ${yen(e.monthly_cost)}円 ÷ ${yen(e.monthly_kwh)}kWh。燃料費調整額・支援策で毎月変動するため削減額は計上しない`,
+        action:'同じ月の検針票で、地域の電力会社の標準メニューと料金を比較する', caution:bm.electricity.caution});
+    }
+  }
+  // 5. 集客
+  (a.media || []).forEach(m => {
+    const n = m.new_customers_per_month || 0, cost = m.monthly_listing_fee + (m.monthly_variable_fee || 0);
+    if (n <= 0) { items.push({area:'集客', title:`${m.name}：新規来店が0人/月（月 ${yen(cost)}円）`, confidence:'要確認', monthly_low:0, monthly_high:cost,
+      basis:`掲載費等 ${yen(cost)}円/月 ÷ 新規 0人`, action:'掲載プラン・掲載内容の見直し、またはプラン縮小を検討', caution:'掲載をやめると予約導線がなくなる。既存客の予約経路も確認する'}); return; }
+    const u = a.unit_economics, cpa = cost / n, gp = u.avg_ticket * u.visits_first_year * u.gross_margin;
+    if (cpa > gp) items.push({area:'集客', title:`${m.name}：新規1人あたり獲得コスト ${yen(cpa)}円 ＞ 新規客の1年目の粗利 ${yen(gp)}円`, confidence:'推定',
+      monthly_low:0, monthly_high:r100((cpa - gp) * n),
+      basis:`（掲載費等 ${yen(cost)}円 ÷ 新規 ${n}人）vs（客単価 ${yen(u.avg_ticket)}円 × 1年目の来店 ${u.visits_first_year}回 × 粗利率 ${Math.round(u.gross_margin * 100)}%）`,
+      action:'掲載プラン・クーポン・掲載エリアの見直し。プラン縮小時の新規数の減少を試算してから判断',
+      caution:'新規数が減ると売上も減る。上限額は「粗利を超えて払っている額」であり、そのまま削減できる額ではない'});
+    else notes.push(`集客：${m.name} は新規1人あたり ${yen(cpa)}円で、1年目の粗利 ${yen(gp)}円 以内`);
+  });
+  // Python 版と同じ順序（決済 → ツール重複 → 未使用ツール → 通信 → 電気 → 集客）
+  return {salon:a.salon_name || '（サロン名）', items, notes,
+    monthly_low:items.reduce((s, i) => s + i.monthly_low, 0), monthly_high:items.reduce((s, i) => s + i.monthly_high, 0)};
+}
+if (typeof module !== 'undefined') module.exports = { runCheck, r100 };
+</script>
+
+<script>
+const BM = JSON.parse(document.getElementById('benchmarks').textContent);
+const FUNCS = BM.functions;
+const ROW = {
+  tools: (v = {}) => `<div class="row"><div><label>ツール名</label><input data-k="name" value="${esc(v.name)}"></div>
+    <div><label>月額（円）</label><input data-k="monthly_fee" type="number" min="0" value="${v.monthly_fee ?? ''}"></div>
+    <div><label>主な機能</label><div class="checks">${Object.entries(FUNCS).map(([k, l]) => `<label><input type="checkbox" data-f="${k}" ${(v.functions || []).includes(k) ? 'checked' : ''}>${l}</label>`).join('')}</div></div>
+    <div><label>直近3か月使った</label><input data-k="used" type="checkbox" ${v.used_last_3_months === false ? '' : 'checked'}></div>
+    <div><button type="button" class="ghost" data-del>削除</button></div></div>`,
+  lines: (v = {}) => `<div class="row"><div><label>回線名</label><input data-k="name" value="${esc(v.name)}" placeholder="光回線／店舗電話／FAX"></div>
+    <div><label>月額（円）</label><input data-k="monthly_fee" type="number" min="0" value="${v.monthly_fee ?? ''}"></div>
+    <div><label>使っている</label><input data-k="in_use" type="checkbox" ${v.in_use === false ? '' : 'checked'}></div><div></div>
+    <div><button type="button" class="ghost" data-del>削除</button></div></div>`,
+  media: (v = {}) => `<div class="row"><div><label>媒体名</label><input data-k="name" value="${esc(v.name)}" placeholder="予約ポータル"></div>
+    <div><label>掲載費（円/月）</label><input data-k="monthly_listing_fee" type="number" min="0" value="${v.monthly_listing_fee ?? ''}"></div>
+    <div><label>予約手数料・ポイント等（円/月）</label><input data-k="monthly_variable_fee" type="number" min="0" value="${v.monthly_variable_fee ?? ''}"></div>
+    <div><label>この媒体経由の新規（人/月）</label><input data-k="new_customers_per_month" type="number" min="0" value="${v.new_customers_per_month ?? ''}"></div>
+    <div><button type="button" class="ghost" data-del>削除</button></div></div>`,
+};
+function esc(s){ return (s ?? '').toString().replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function addRow(kind, v){ document.getElementById(kind).insertAdjacentHTML('beforeend', ROW[kind](v)); }
+document.querySelectorAll('[data-add]').forEach(b => b.onclick = () => addRow(b.dataset.add));
+document.addEventListener('click', e => { if (e.target.matches('[data-del]')) e.target.closest('.row').remove(); });
+const F = document.getElementById('f');
+const num = n => { const v = F.elements[n].value.trim(); return v === '' ? null : Number(v); };
+const rowNum = (r, k) => { const v = r.querySelector(`[data-k="${k}"]`).value.trim(); return v === '' ? 0 : Number(v); };
+
+function collect(){
+  const a = {salon_name:F.elements.salon_name.value.trim(), monthly_revenue:num('monthly_revenue') || 0};
+  if (num('cashless_pct') != null && num('fee_pct') != null && a.monthly_revenue)
+    a.payment = {cashless_ratio:num('cashless_pct') / 100, card_fee_rate:num('fee_pct') / 100, monthly_fixed_fee:num('pay_fixed') || 0};
+  a.tools = [...document.querySelectorAll('#tools .row')].filter(r => r.querySelector('[data-k="name"]').value.trim()).map(r => ({
+    name:r.querySelector('[data-k="name"]').value.trim(), monthly_fee:rowNum(r, 'monthly_fee'),
+    functions:[...r.querySelectorAll('[data-f]:checked')].map(c => c.dataset.f), used_last_3_months:r.querySelector('[data-k="used"]').checked}));
+  const lines = [...document.querySelectorAll('#lines .row')].filter(r => r.querySelector('[data-k="name"]').value.trim()).map(r => ({
+    name:r.querySelector('[data-k="name"]').value.trim(), monthly_fee:rowNum(r, 'monthly_fee'), in_use:r.querySelector('[data-k="in_use"]').checked}));
+  if (lines.length) a.telecom = {lines, years_since_review:num('years_since_review')};
+  if (num('elec_cost') != null) a.electricity = {plan:F.elements.elec_plan.value.trim(), monthly_cost:num('elec_cost'), monthly_kwh:num('elec_kwh') || 0};
+  a.media = [...document.querySelectorAll('#media .row')].filter(r => r.querySelector('[data-k="name"]').value.trim()).map(r => ({
+    name:r.querySelector('[data-k="name"]').value.trim(), monthly_listing_fee:rowNum(r, 'monthly_listing_fee'),
+    monthly_variable_fee:rowNum(r, 'monthly_variable_fee'), new_customers_per_month:rowNum(r, 'new_customers_per_month')}));
+  a.unit_economics = {avg_ticket:num('avg_ticket') || 0, visits_first_year:num('visits') || 0, gross_margin:(num('gm_pct') || 0) / 100};
+  if (a.media.length && !(a.unit_economics.avg_ticket && a.unit_economics.visits_first_year && a.unit_economics.gross_margin)) a._mediaIncomplete = true;
+  return a;
+}
+function fill(a){
+  F.reset(); ['tools', 'lines', 'media'].forEach(k => document.getElementById(k).innerHTML = '');
+  F.elements.salon_name.value = a.salon_name || ''; F.elements.monthly_revenue.value = a.monthly_revenue ?? '';
+  if (a.payment){ F.elements.cashless_pct.value = +(a.payment.cashless_ratio * 100).toFixed(2); F.elements.fee_pct.value = +(a.payment.card_fee_rate * 100).toFixed(2); F.elements.pay_fixed.value = a.payment.monthly_fixed_fee || 0; }
+  (a.tools || []).forEach(t => addRow('tools', t));
+  if (a.telecom){ (a.telecom.lines || []).forEach(l => addRow('lines', l)); F.elements.years_since_review.value = a.telecom.years_since_review ?? ''; }
+  if (a.electricity){ F.elements.elec_plan.value = a.electricity.plan || ''; F.elements.elec_cost.value = a.electricity.monthly_cost; F.elements.elec_kwh.value = a.electricity.monthly_kwh || ''; }
+  (a.media || []).forEach(m => addRow('media', m));
+  if (a.unit_economics){ F.elements.avg_ticket.value = a.unit_economics.avg_ticket; F.elements.visits.value = a.unit_economics.visits_first_year; F.elements.gm_pct.value = Math.round(a.unit_economics.gross_margin * 100); }
+  ['tools', 'lines', 'media'].forEach(k => { if (!document.querySelector(`#${k} .row`)) addRow(k); });
+}
+function render(a){
+  const res = runCheck(a, BM), price = num('price') || 0, el = document.getElementById('report');
+  const confirmed = res.items.filter(i => i.confidence === '確定').reduce((s, i) => s + i.monthly_low, 0);
+  const amt = i => !i.monthly_high ? '—' : i.monthly_low === i.monthly_high ? yen(i.monthly_high) : `${yen(i.monthly_low)}〜${yen(i.monthly_high)}`;
+  el.innerHTML = `<h2>固定費・集客費チェック 結果：${esc(res.salon)}</h2>
+    <p class="disclaimer">ご回答の数値にもとづく機械的な判定です。見直しの判断・実行はお客様ご自身で行ってください。当方は契約先との交渉・手続きの代行は行いません。金額は目安で、削減を保証するものではありません。</p>
+    <p>見直し余地の目安：<span class="big">月 ${yen(res.monthly_low)}〜${yen(res.monthly_high)}円</span>（年 ${yen(res.monthly_low * 12)}〜${yen(res.monthly_high * 12)}円）<br>「確定」項目の合計：月 ${yen(confirmed)}円</p>
+    ${price && res.monthly_high * 12 < price ? `<div class="refund">見直し余地の上限（年 ${yen(res.monthly_high * 12)}円）が診断料 ${yen(price)}円 を下回るため、返金保証の対象です。</div>` : ''}
+    ${a._mediaIncomplete ? '<div class="refund">集客の判定には、客単価・1年目の来店回数・粗利率の入力が必要です。</div>' : ''}
+    <div class="table-wrap"><table><tr><th>領域</th><th>項目</th><th>確度</th><th>月の目安（円）</th><th>根拠</th><th>お客様が行うこと</th><th>注意</th></tr>
+    ${res.items.map(i => `<tr><td>${i.area}</td><td>${esc(i.title)}</td><td><span class="tag ${i.confidence}">${i.confidence}</span></td><td class="r">${amt(i)}</td><td>${esc(i.basis)}</td><td>${i.action}</td><td>${i.caution}</td></tr>`).join('') || '<tr><td colspan="7">見直し候補は見つかりませんでした。</td></tr>'}
+    </table></div>
+    ${res.notes.length ? `<h2 style="margin-top:20px">問題が見つからなかった項目・判定できなかった項目</h2><ul>${res.notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : ''}
+    <p class="disclaimer">確度：確定＝回答どおりなら確実に減らせる／推定＝条件の変更が前提の見込み／要確認＝金額を出さず、比較が必要な項目。比較基準（${BM.checked_at} 確認）：${Object.entries(BM.sources).map(([k, v]) => esc(k + '：' + v)).join('／')}</p>`;
+  el.style.display = 'block'; el.scrollIntoView({behavior:'smooth'});
+}
+F.onsubmit = e => { e.preventDefault(); const a = collect(); if (a.media.length && a._mediaIncomplete) a.media = []; render(a); };
+document.getElementById('print').onclick = () => { if (document.getElementById('report').style.display !== 'block') F.requestSubmit(); setTimeout(() => window.print(), 100); };
+document.getElementById('save').onclick = () => {
+  const a = collect(); delete a._mediaIncomplete;
+  const blob = new Blob([JSON.stringify(a, null, 2)], {type:'application/json'}), url = URL.createObjectURL(blob), link = document.createElement('a');
+  link.href = url; link.download = `answers_${(a.salon_name || 'salon').replace(/[\\/:*?"<>|\s]/g, '_')}_${new Date().toISOString().slice(0, 10)}.json`; link.click(); URL.revokeObjectURL(url);
+};
+document.getElementById('load').onchange = e => { const f = e.target.files[0]; if (!f) return; f.text().then(t => { fill(JSON.parse(t)); }); };
+document.getElementById('sample').onclick = () => fill(SAMPLE);
+const SAMPLE = {"salon_name":"サンプル美容室（架空）","monthly_revenue":2500000,"payment":{"cashless_ratio":0.6,"card_fee_rate":0.0324,"monthly_fixed_fee":0},
+  "tools":[{"name":"予約サイト付属の管理画面","monthly_fee":0,"functions":["booking"],"used_last_3_months":true},{"name":"サロン向け予約・カルテシステムB","monthly_fee":9800,"functions":["booking","karte","messaging"],"used_last_3_months":true},{"name":"汎用POSレジC","monthly_fee":0,"functions":["pos"],"used_last_3_months":true},{"name":"メッセージ配信ツールD","monthly_fee":5500,"functions":["messaging"],"used_last_3_months":false}],
+  "telecom":{"years_since_review":5,"lines":[{"name":"光回線","monthly_fee":6000,"in_use":true},{"name":"固定電話（店舗）","monthly_fee":2500,"in_use":true},{"name":"固定電話（旧FAX）","monthly_fee":1800,"in_use":false}]},
+  "electricity":{"plan":"低圧電力＋従量電灯","monthly_cost":48000,"monthly_kwh":1500},
+  "media":[{"name":"予約ポータルE","monthly_listing_fee":80000,"monthly_variable_fee":15000,"new_customers_per_month":12}],
+  "unit_economics":{"avg_ticket":7500,"visits_first_year":2.5,"gross_margin":0.4}};
+['tools', 'lines', 'media'].forEach(k => addRow(k));
+</script>
+</body>
+</html>
