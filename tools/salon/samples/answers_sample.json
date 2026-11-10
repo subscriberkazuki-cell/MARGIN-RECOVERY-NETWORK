@@ -1,0 +1,25 @@
+{
+  "_note": "架空のサンプル回答。実在の店舗ではない。",
+  "salon_name": "サンプル美容室（架空・スタイリスト3名・1店舗）",
+  "monthly_revenue": 2500000,
+  "payment": {"provider": "決済サービスA", "cashless_ratio": 0.6, "card_fee_rate": 0.0324, "monthly_fixed_fee": 0},
+  "tools": [
+    {"name": "予約サイト付属の管理画面", "monthly_fee": 0, "functions": ["booking"], "used_last_3_months": true},
+    {"name": "サロン向け予約・カルテシステムB", "monthly_fee": 9800, "functions": ["booking", "karte", "messaging"], "used_last_3_months": true},
+    {"name": "汎用POSレジC", "monthly_fee": 0, "functions": ["pos"], "used_last_3_months": true},
+    {"name": "メッセージ配信ツールD", "monthly_fee": 5500, "functions": ["messaging"], "used_last_3_months": false}
+  ],
+  "telecom": {
+    "years_since_review": 5,
+    "lines": [
+      {"name": "光回線", "monthly_fee": 6000, "in_use": true},
+      {"name": "固定電話（店舗）", "monthly_fee": 2500, "in_use": true},
+      {"name": "固定電話（旧FAX）", "monthly_fee": 1800, "in_use": false}
+    ]
+  },
+  "electricity": {"plan": "低圧電力＋従量電灯", "monthly_cost": 48000, "monthly_kwh": 1500},
+  "media": [
+    {"name": "予約ポータルE", "monthly_listing_fee": 80000, "monthly_variable_fee": 15000, "new_customers_per_month": 12}
+  ],
+  "unit_economics": {"avg_ticket": 7500, "visits_first_year": 2.5, "gross_margin": 0.4}
+}
