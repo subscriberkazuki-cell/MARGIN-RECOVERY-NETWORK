@@ -10,8 +10,9 @@ EC事業者向け 配送費・物流請求の監査事業（成功報酬＋継�
 |---|---|
 | 対象 | 美容室・ネイル・エステ・まつげ（1〜5店舗） |
 | 商品 | 固定費・集客費チェック 19,800円（見直し余地が診断料未満なら返金）＋月額2,980円の見直し通知（検証後に判断） |
+| 診断項目 | 決済手数料・ツール重複・通信・電気・集客の費用対効果・**税理士/記帳の費用**（相場比較のみ。税務相談はしない。[調査](docs/01_strategy/03_調査_税理士費用とAI記帳.md)） |
 | 仕組み | 5分の質問票 → 決定論的プログラムで判定（[tools/salon/](tools/salon/fixed_cost_check.py)）→ 15分の説明。書類の受領・AIへの顧客データ入力なし。見直しはオーナー自身が実行 |
-| 販路 | サロン専門の税理士・会計事務所などの紹介元が主軸 |
+| 販路 | サロンオーナー同士の紹介、美容ディーラー・開業支援・予約/POS事業者（税理士費用も診断するため、顧問税理士への紹介依頼はしない） |
 | 検証 | 4週間・追加投資10万円以内。合格基準と撤退基準は [方針転換 v0.3](docs/decisions/2026-11-10b_方針転換v0.3_サロン定額モデル.md) |
 | 計画 | [サロン検証4週間計画](docs/06_plan/05_サロン検証4週間計画.md)、[収益試算](docs/06_plan/04_サロン定額モデル_シミュレーション結果.md) |
 | 事業形態 | 個人事業（変更なし） |
@@ -51,7 +52,7 @@ EC事業者向け 配送費・物流請求の監査事業（成功報酬＋継�
 | 成果物 | 内容 | 使い方 |
 |---|---|---|
 | **サロン固定費チェック・ブラウザ版** | オフラインで動く1ファイルのHTML。オーナーと一緒に入力しその場で結果・PDF。外部通信なし | `tools/salon/check.html` をブラウザで開く |
-| **サロン固定費チェック（v0.3）** | 質問票の回答から、決済手数料・ツール重複・未使用回線・電気単価・集客の費用対効果を判定。確度（確定/推定/要確認）と根拠つき | `python3 tools/salon/fixed_cost_check.py --input tools/salon/samples/answers_sample.json`（テスト10件。ブラウザ版との一致確認を含む：`python3 -m unittest discover -s tools/salon/tests`） |
+| **サロン固定費チェック（v0.3）** | 質問票の回答から、決済手数料・ツール重複・未使用回線・電気単価・集客の費用対効果を判定。確度（確定/推定/要確認）と根拠つき | `python3 tools/salon/fixed_cost_check.py --input tools/salon/samples/answers_sample.json`（テスト14件。ブラウザ版との一致確認を含む：`python3 -m unittest discover -s tools/salon/tests`） |
 | サロン定額モデル試算（v0.3） | 3シナリオ・18か月 | `python3 finance/simulate_salon.py` |
 | 宅配便請求監査エンジン | 請求CSV×契約運賃表を照合し、重複請求・契約単価超過・サイズ区分の過大候補・小型便候補を根拠付きで出力。不正な入力行は報告（仕様：[tools/audit/INPUT_SPEC.md](tools/audit/INPUT_SPEC.md)） | `python3 tools/audit/shipping_audit.py --shipments tools/audit/samples/shipments_sample.csv --ratecard tools/audit/samples/ratecard_sample.json` |
 | テスト | 判定ロジック・入力チェックの単体テスト（14件） | `python3 -m unittest discover -s tools/audit/tests` |

@@ -62,6 +62,27 @@ class SalonCheckTest(unittest.TestCase):
         self.assertEqual([i.confidence for i in r.items], ["確定"])
         self.assertEqual(r.monthly_high, 5500)
 
+    def test_accounting_bookkeeping_contract_range(self):
+        # 年商 960万（<1,000万帯）：代替 = アプリ 10,800〜23,760 ＋ 申告のみ 70,000〜150,000
+        r = fc.run(base(monthly_revenue=800_000, accounting={"annual_fee": 240_000, "includes_bookkeeping": True}), BM)
+        it = r.items[0]
+        self.assertEqual((it.area, it.confidence), ("税理士・記帳", "推定"))
+        # 下限 (240,000−173,760)/12 = 5,520 → 5,500 ／ 上限 (240,000−80,800)/12 = 13,267 → 13,300
+        self.assertEqual((it.monthly_low, it.monthly_high), (5500, 13300))
+
+    def test_accounting_cheap_contract_gives_note(self):
+        r = fc.run(base(monthly_revenue=800_000, accounting={"annual_fee": 80_000, "includes_bookkeeping": True}), BM)
+        self.assertEqual(r.items, [])
+        self.assertTrue(any("税理士・記帳" in n for n in r.notes))
+
+    def test_accounting_unknown_band_claims_nothing(self):
+        r = fc.run(base(monthly_revenue=3_000_000, accounting={"annual_fee": 500_000, "includes_bookkeeping": True}), BM)
+        self.assertEqual((r.items[0].confidence, r.monthly_high), ("要確認", 0))
+
+    def test_accounting_filing_only_above_band_is_check_only(self):
+        r = fc.run(base(monthly_revenue=800_000, accounting={"annual_fee": 200_000, "includes_bookkeeping": False}), BM)
+        self.assertEqual((r.items[0].confidence, r.monthly_high), ("要確認", 0))
+
     def test_sample_report_renders(self):
         r = fc.run(SAMPLE, BM)
         md = fc.render_md(r, BM, 19800)

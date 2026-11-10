@@ -1,4 +1,4 @@
-"""ブラウザ版 check.html と Python 版 fixed_cost_check.py が同じ判定をすることを確認する。"""
+"""ブラウザ版 check.html と Python 版 fixed_cost_check.py が同じ判定をすることを確認する（6領域）。"""
 import json
 import re
 import shutil
@@ -35,6 +35,9 @@ CASES = [
                {"name": "C", "monthly_fee": 2000, "functions": ["booking"], "used_last_3_months": True}],
      "telecom": {"years_since_review": 2, "lines": [{"name": "L", "monthly_fee": 5000, "in_use": True}]},
      "electricity": {"plan": "x", "monthly_cost": 20000, "monthly_kwh": 0}},
+    {"salon_name": "c", "monthly_revenue": 800000, "accounting": {"annual_fee": 240000, "includes_bookkeeping": True, "has_employees": True}},
+    {"salon_name": "d", "monthly_revenue": 1500000, "accounting": {"annual_fee": 250000, "includes_bookkeeping": False}},
+    {"salon_name": "e", "monthly_revenue": 1500000, "accounting": {"annual_fee": 90000, "includes_bookkeeping": True}},
 ]
 
 

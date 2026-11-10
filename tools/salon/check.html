@@ -100,6 +100,15 @@ td.r{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
         </div>
       </fieldset>
 
+      <fieldset><legend>7. 税理士・記帳</legend>
+        <div class="grid">
+          <div><label>税理士への年間支払い（円・顧問料＋決算料など合計）</label><input name="acc_fee" type="number" min="0" placeholder="300000"></div>
+          <div><label>記帳（レシート・帳簿の入力）も税理士に任せている</label><input name="acc_bk" type="checkbox"></div>
+          <div><label>従業員（給与を払うスタッフ）がいる</label><input name="acc_emp" type="checkbox"></div>
+        </div>
+        <p class="hint">相場との比較だけを表示します。税金の判断や申告方法の助言はしません。</p>
+      </fieldset>
+
       <div class="actions">
         <button type="submit">結果を出す</button>
         <button type="button" class="ghost" id="print">結果を印刷・PDF保存</button>
@@ -122,7 +131,9 @@ td.r{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
     "alt_rate_high": 0.0298,
     "_comment": "比較料率のレンジ。下限2.48%は Airペイの中小事業者向けプログラム（エントリー制・期間限定の可能性）、上限2.98%は保守側の仮置き（相場1.98〜3.24%の中央付近）。対象外の店舗もあるため結果は『推定』"
   },
-  "telecom": {"review_after_years": 3},
+  "telecom": {
+    "review_after_years": 3
+  },
   "electricity": {
     "caution": "低圧は燃料費調整・料金支援策で単価が毎月変動。市場連動型プランは高騰リスクがある。切替時は契約期間・解約金・燃料費調整の上限有無を確認"
   },
@@ -137,13 +148,36 @@ td.r{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
   "sources": {
     "決済手数料の相場 1.98〜3.24%": "ISSOH・PayRoute 等の解説（2026-11-09 確認）",
     "Airペイ 中小事業者向け 2.48%": "Impress Watch https://www.watch.impress.co.jp/docs/news/1634404.html（2026-11-09 確認）",
-    "低圧電気の燃料費調整": "東京電力パワーグリッド・関西電力の公表資料（2026-11-09 確認）"
+    "低圧電気の燃料費調整": "東京電力パワーグリッド・関西電力の公表資料（2026-11-09 確認）",
+    "税理士の確定申告のみの相場（青色・売上1,000万円未満 7〜15万円／3,000万円未満 10〜20万円）": "税理士ドットコム 解説 https://www.zeiri4.com/c_1/h_943/（2026-11-10 確認）",
+    "記帳から申告まで丸投げ 年10〜25万円": "行政書士サイトの解説（atsoho.com、2026-11-10 確認）",
+    "個人向けクラウド会計 年額 約1.1〜2.4万円": "マネーフォワード パーソナルミニ年額10,800円・freee スタンダード年払い月1,980円（第三者比較サイト、2026-07-28時点の表示を2026-11-10確認）"
+  },
+  "accounting": {
+    "_comment": "税理士の確定申告のみ（スポット）の相場と、個人向けクラウド会計の年額。すべて第三者サイトの目安で、公式・見積で要確認",
+    "spot_filing_bands": [
+      {
+        "revenue_under": 10000000,
+        "low": 70000,
+        "high": 150000
+      },
+      {
+        "revenue_under": 30000000,
+        "low": 100000,
+        "high": 200000
+      }
+    ],
+    "app_annual_low": 10800,
+    "app_annual_high": 23760,
+    "outsourced_full_low": 100000,
+    "outsourced_full_high": 250000,
+    "caution": "記帳を自分で行う時間（月数時間程度との解説あり）と正確さの負担が増える。売上規模が大きい・消費税の課税事業者・従業員がいる・税務調査への備えが必要な場合は税理士の関与の価値が高い。当方は税務相談を行わないため、契約の変更は税理士・税務署に相談のうえ判断すること"
   }
 }
 </script>
 
 <script id="logic">
-// 判定ロジック。tools/salon/fixed_cost_check.py と同じ結果になること（tests/test_check_html.py で照合）。
+// 判定ロジック（6領域）。tools/salon/fixed_cost_check.py と同じ結果になること（tests/test_check_html.py で照合）。
 function r100(v){ return v >= 0 ? Math.floor(v / 100 + 0.5) * 100 : -Math.floor(-v / 100 + 0.5) * 100; }
 function yen(v){ return Math.round(v).toLocaleString('ja-JP'); }
 function pct(v){ return (v * 100).toFixed(2) + '%'; }
@@ -216,7 +250,28 @@ function runCheck(a, bm){
       caution:'新規数が減ると売上も減る。上限額は「粗利を超えて払っている額」であり、そのまま削減できる額ではない'});
     else notes.push(`集客：${m.name} は新規1人あたり ${yen(cpa)}円で、1年目の粗利 ${yen(gp)}円 以内`);
   });
-  // Python 版と同じ順序（決済 → ツール重複 → 未使用ツール → 通信 → 電気 → 集客）
+  // 6. 税理士・記帳（税務相談はしない。相場との比較のみ）
+  const ac = a.accounting;
+  if (ac && ac.annual_fee) {
+    const b = bm.accounting, fee = ac.annual_fee, rev = (a.monthly_revenue || 0) * 12;
+    const band = b.spot_filing_bands.find(x => rev < x.revenue_under);
+    if (!band) items.push({area:'税理士・記帳', title:`税理士への支払い 年${yen(fee)}円（年商 ${yen(rev)}円）`, confidence:'要確認', monthly_low:0, monthly_high:0,
+      basis:'この年商帯の比較相場を持っていないため金額は計上しない', action:'契約の内訳（記帳代行・申告・相談）を確認し、必要なら複数の事務所から見積を取る', caution:b.caution});
+    else if (!ac.includes_bookkeeping) {
+      if (fee > band.high) items.push({area:'税理士・記帳', title:`申告のみの契約で年${yen(fee)}円（相場 ${yen(band.low)}〜${yen(band.high)}円）`, confidence:'要確認', monthly_low:0, monthly_high:0,
+        basis:'相場より高いが、契約内容（相談・届出・その他業務）次第のため金額は計上しない', action:'契約の内訳を確認する', caution:b.caution});
+      else notes.push(`税理士・記帳：申告のみの契約で年${yen(fee)}円。相場（${yen(band.low)}〜${yen(band.high)}円）の範囲内`);
+    } else {
+      const altLow = b.app_annual_low + band.low, altHigh = b.app_annual_high + band.high;
+      if (fee <= altLow) notes.push(`税理士・記帳：記帳込みで年${yen(fee)}円。会計アプリ＋申告のみの目安（年${yen(altLow)}〜${yen(altHigh)}円）以下`);
+      else items.push({area:'税理士・記帳', title:`記帳代行込みの税理士契約 年${yen(fee)}円 → 会計アプリで自分で記帳＋申告のみ依頼`, confidence:'推定',
+        monthly_low:r100(Math.max(fee - altHigh, 0) / 12), monthly_high:r100((fee - altLow) / 12),
+        basis:`現在 年${yen(fee)}円 −（会計アプリ 年${yen(b.app_annual_low)}〜${yen(b.app_annual_high)}円 ＋ 申告のみの相場 年${yen(band.low)}〜${yen(band.high)}円）を12で割った額`,
+        action:'レシート・カード・口座の記録を会計アプリで自分で行い、税理士には申告（と確認）だけを依頼する形の見積を、今の税理士と他の事務所から取る',
+        caution:b.caution + (ac.has_employees ? '。従業員の給与計算・年末調整の費用は別途確認' : '')});
+    }
+  }
+  // Python 版と同じ順序（決済 → ツール重複 → 未使用ツール → 通信 → 電気 → 集客 → 税理士・記帳）
   return {salon:a.salon_name || '（サロン名）', items, notes,
     monthly_low:items.reduce((s, i) => s + i.monthly_low, 0), monthly_high:items.reduce((s, i) => s + i.monthly_high, 0)};
 }
@@ -265,6 +320,7 @@ function collect(){
     name:r.querySelector('[data-k="name"]').value.trim(), monthly_listing_fee:rowNum(r, 'monthly_listing_fee'),
     monthly_variable_fee:rowNum(r, 'monthly_variable_fee'), new_customers_per_month:rowNum(r, 'new_customers_per_month')}));
   a.unit_economics = {avg_ticket:num('avg_ticket') || 0, visits_first_year:num('visits') || 0, gross_margin:(num('gm_pct') || 0) / 100};
+  if (num('acc_fee')) a.accounting = {annual_fee:num('acc_fee'), includes_bookkeeping:F.elements.acc_bk.checked, has_employees:F.elements.acc_emp.checked};
   if (a.media.length && !(a.unit_economics.avg_ticket && a.unit_economics.visits_first_year && a.unit_economics.gross_margin)) a._mediaIncomplete = true;
   return a;
 }
@@ -277,6 +333,7 @@ function fill(a){
   if (a.electricity){ F.elements.elec_plan.value = a.electricity.plan || ''; F.elements.elec_cost.value = a.electricity.monthly_cost; F.elements.elec_kwh.value = a.electricity.monthly_kwh || ''; }
   (a.media || []).forEach(m => addRow('media', m));
   if (a.unit_economics){ F.elements.avg_ticket.value = a.unit_economics.avg_ticket; F.elements.visits.value = a.unit_economics.visits_first_year; F.elements.gm_pct.value = Math.round(a.unit_economics.gross_margin * 100); }
+  if (a.accounting){ F.elements.acc_fee.value = a.accounting.annual_fee; F.elements.acc_bk.checked = !!a.accounting.includes_bookkeeping; F.elements.acc_emp.checked = !!a.accounting.has_employees; }
   ['tools', 'lines', 'media'].forEach(k => { if (!document.querySelector(`#${k} .row`)) addRow(k); });
 }
 function render(a){
@@ -309,7 +366,8 @@ const SAMPLE = {"salon_name":"サンプル美容室（架空）","monthly_revenu
   "telecom":{"years_since_review":5,"lines":[{"name":"光回線","monthly_fee":6000,"in_use":true},{"name":"固定電話（店舗）","monthly_fee":2500,"in_use":true},{"name":"固定電話（旧FAX）","monthly_fee":1800,"in_use":false}]},
   "electricity":{"plan":"低圧電力＋従量電灯","monthly_cost":48000,"monthly_kwh":1500},
   "media":[{"name":"予約ポータルE","monthly_listing_fee":80000,"monthly_variable_fee":15000,"new_customers_per_month":12}],
-  "unit_economics":{"avg_ticket":7500,"visits_first_year":2.5,"gross_margin":0.4}};
+  "unit_economics":{"avg_ticket":7500,"visits_first_year":2.5,"gross_margin":0.4},
+  "accounting":{"annual_fee":300000,"includes_bookkeeping":true,"has_employees":true}};
 ['tools', 'lines', 'media'].forEach(k => addRow(k));
 </script>
 </body>

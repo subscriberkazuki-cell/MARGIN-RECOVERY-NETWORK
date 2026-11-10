@@ -12,6 +12,8 @@
   3. 通信（固定電話・回線の本数と用途）
   4. 電気（kWh単価の算出のみ。比較は要確認として人が行う）
   5. 集客媒体の費用対効果（新規1人あたり獲得コスト vs 新規客の1年目の粗利）
+  6. 税理士・記帳の費用（記帳込みの契約 vs 会計アプリで記帳＋申告のみの相場）
+     ※ 税務相談・税務判断はしない（税理士法52条）。相場との比較だけを示す
 """
 from __future__ import annotations
 
@@ -178,9 +180,45 @@ def check_acquisition(a: dict, bm: dict, res: Result) -> None:
             res.notes.append(f"集客：{m['name']} は新規1人あたり {cpa:,.0f}円で、1年目の粗利 {first_year_gp:,.0f}円 以内")
 
 
+def check_accounting(a: dict, bm: dict, res: Result) -> None:
+    ac = a.get("accounting")
+    if not ac or not ac.get("annual_fee"):
+        return
+    b = bm["accounting"]
+    fee = ac["annual_fee"]
+    annual_revenue = a.get("monthly_revenue", 0) * 12
+    band = next((x for x in b["spot_filing_bands"] if annual_revenue < x["revenue_under"]), None)
+    if band is None:
+        res.items.append(Item(
+            "税理士・記帳", f"税理士への支払い 年{fee:,}円（年商 {annual_revenue:,}円）", "要確認", 0, 0,
+            "この年商帯の比較相場を持っていないため金額は計上しない",
+            "契約の内訳（記帳代行・申告・相談）を確認し、必要なら複数の事務所から見積を取る", b["caution"]))
+        return
+    if not ac.get("includes_bookkeeping"):
+        if fee > band["high"]:
+            res.items.append(Item(
+                "税理士・記帳", f"申告のみの契約で年{fee:,}円（相場 {band['low']:,}〜{band['high']:,}円）", "要確認", 0, 0,
+                "相場より高いが、契約内容（相談・届出・その他業務）次第のため金額は計上しない",
+                "契約の内訳を確認する", b["caution"]))
+        else:
+            res.notes.append(f"税理士・記帳：申告のみの契約で年{fee:,}円。相場（{band['low']:,}〜{band['high']:,}円）の範囲内")
+        return
+    alt_low = b["app_annual_low"] + band["low"]
+    alt_high = b["app_annual_high"] + band["high"]
+    if fee <= alt_low:
+        res.notes.append(f"税理士・記帳：記帳込みで年{fee:,}円。会計アプリ＋申告のみの目安（年{alt_low:,}〜{alt_high:,}円）以下")
+        return
+    lo, hi = _r(max(fee - alt_high, 0) / 12), _r((fee - alt_low) / 12)
+    res.items.append(Item(
+        "税理士・記帳", f"記帳代行込みの税理士契約 年{fee:,}円 → 会計アプリで自分で記帳＋申告のみ依頼", "推定", lo, hi,
+        f"現在 年{fee:,}円 −（会計アプリ 年{b['app_annual_low']:,}〜{b['app_annual_high']:,}円 ＋ 申告のみの相場 年{band['low']:,}〜{band['high']:,}円）を12で割った額",
+        "レシート・カード・口座の記録を会計アプリで自分で行い、税理士には申告（と確認）だけを依頼する形の見積を、今の税理士と他の事務所から取る",
+        b["caution"] + ("。従業員の給与計算・年末調整の費用は別途確認" if ac.get("has_employees") else "")))
+
+
 def run(answers: dict, bm: dict) -> Result:
     res = Result(answers.get("salon_name", "（サロン名）"))
-    for fn in (check_payment, check_saas, check_telecom, check_electricity, check_acquisition):
+    for fn in (check_payment, check_saas, check_telecom, check_electricity, check_acquisition, check_accounting):
         fn(answers, bm, res)
     return res
 
