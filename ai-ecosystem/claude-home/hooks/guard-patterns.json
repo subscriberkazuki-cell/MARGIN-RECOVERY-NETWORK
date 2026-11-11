@@ -1,0 +1,77 @@
+{
+  "_note": "PreToolUse ガードの判定パターン（大文字小文字を区別しない正規表現。.NET と Python の両方で同じ意味になる書き方に限定）。deny は即ブロック、ask は人間に確認。permissions の allow/ask/deny と二重化している。",
+  "deny": [
+    {
+      "id": "rm-root",
+      "re": "\\brm\\s+(-[a-z]*\\s+)*-[a-z]*r[a-z]*\\s+(-[a-z]*\\s+)*(/|~|/\\*|\\$home|[a-z]:[\\\\/]?|/[a-z])(\\s|$)",
+      "why": "ドライブ・ホーム全体の再帰削除"
+    },
+    {
+      "id": "remove-item-root",
+      "re": "^(?=.*\\b(remove-item|ri|rd|rmdir|del)\\b)(?=.*\\s(-recurse|/s)\\b)(?=.*\\s([a-z]:[\\\\/]?|~|\\$env:userprofile|\\$home)(\\s|$))",
+      "why": "ドライブ・ホーム全体の再帰削除"
+    },
+    {
+      "id": "format-disk",
+      "re": "(\\bformat(\\.com)?\\s+[a-z]:|\\bformat-volume\\b|\\bclear-disk\\b|\\bdiskpart\\b)",
+      "why": "ディスクの初期化"
+    },
+    {
+      "id": "force-push",
+      "re": "\\bgit\\s+push\\b.*(\\s--force(\\s|$)|\\s-f(\\s|$))",
+      "why": "強制プッシュ（必要なら人間が自分で実行する）"
+    },
+    {
+      "id": "skip-permissions",
+      "re": "--dangerously-skip-permissions",
+      "why": "権限確認の無効化"
+    },
+    {
+      "id": "pipe-to-shell",
+      "re": "\\b(curl|wget|iwr|invoke-webrequest|irm|invoke-restmethod)\\b.*\\|\\s*(sh|bash|iex|invoke-expression)\\b",
+      "why": "ダウンロードしたスクリプトの直接実行"
+    },
+    {
+      "id": "read-secrets",
+      "re": "\\b(cat|type|get-content|gc|more|less|head|tail)\\b.*(\\.env(\\s|$|\\.)|\\.credentials\\.json|id_rsa|id_ed25519|\\.pem(\\s|$))",
+      "why": "秘密情報ファイルの表示"
+    },
+    {
+      "id": "set-api-key",
+      "re": "(anthropic_api_key\\s*=|setx\\s+anthropic_api_key|\\$env:anthropic_api_key\\s*=)",
+      "why": "APIキーの設定（Proの契約ではなくAPI課金になるおそれ）"
+    }
+  ],
+  "ask": [
+    {
+      "id": "git-push",
+      "re": "\\bgit\\s+push\\b",
+      "why": "GitHub へのプッシュ"
+    },
+    {
+      "id": "deploy",
+      "re": "(\\b(vercel|netlify|wrangler|firebase)\\b.*(\\bdeploy\\b|--prod\\b|\\bpublish\\b)|\\bnpm\\s+publish\\b|\\bgh\\s+release\\s+create\\b|\\bgh\\s+pr\\s+merge\\b)",
+      "why": "公開・デプロイ"
+    },
+    {
+      "id": "delete",
+      "re": "(^|[\\s;&|(])(rm|del|erase|rmdir|rd|remove-item|ri)(\\s|$)",
+      "why": "ファイル削除"
+    },
+    {
+      "id": "install",
+      "re": "(\\b(winget|choco|scoop)\\s+install\\b|\\bnpm\\s+(i|install|add)\\s+(-g|--global)\\b|\\bpip3?\\s+install\\b|\\bollama\\s+(pull|run)\\b|\\bnpx\\s+-y\\b)",
+      "why": "ソフトウェア・モデルの導入"
+    },
+    {
+      "id": "system-change",
+      "re": "(\\breg\\s+(add|delete)\\b|\\bset-itemproperty\\b.*\\bhk(lm|cu)\\b|\\bset-executionpolicy\\b|\\bsetx\\b)",
+      "why": "Windows の設定変更"
+    },
+    {
+      "id": "send-mail",
+      "re": "(\\bsend-mailmessage\\b|\\bsendmail\\b)",
+      "why": "メール送信"
+    }
+  ]
+}
