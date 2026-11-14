@@ -16,6 +16,7 @@ Windows PC 上の Claude Code を司令塔に、専門エージェント・ス�
 | `obsidian-template/AI_Hub/` | Vault に追加する記憶の構造（USER_PROFILE・PROJECT_INDEX・MEMORY_INDEX・DECISIONS ほか） |
 | `install/install.ps1` | 非破壊インストーラー（既定は計画表示のみ） |
 | `docs/` | SYSTEM_ARCHITECTURE・WORKFLOWS・SETUP_REPORT・CHANGELOG |
+| `HANDOFF_PROMPT.md` | PC 上の Claude Code に貼り付ける引継ぎプロンプト |
 | `tests/` | 構造とガード判定のテスト（`python3 -m unittest discover -s tests`） |
 
 ## セットアップ（PC で行う。所要 約15分）
