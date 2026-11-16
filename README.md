@@ -62,6 +62,10 @@ EC事業者向け 配送費・物流請求の監査事業（成功報酬＋継�
 
 サンプルデータはすべて架空。**顧客の実データはこのリポジトリにコミットしない**（`.gitignore` で `client_data/` を除外）。
 
+## 別セッションへの引継ぎ
+
+[docs/HANDOFF_MARGIN_RECOVERY_NETWORK.md](docs/HANDOFF_MARGIN_RECOVERY_NETWORK.md) の「---」から下を新しいセッションに貼り付ける（全機能・決定・現状を記載）。
+
 ## 次のアクション
 
 **あなたの作業は [docs/06_plan/07_あなたの作業_最小版.md](docs/06_plan/07_あなたの作業_最小版.md) の3ステップだけ**（協力店への連絡 → 当日60分 → 振り返りを Claude に貼り付け）。それ以外は Claude が行う。
