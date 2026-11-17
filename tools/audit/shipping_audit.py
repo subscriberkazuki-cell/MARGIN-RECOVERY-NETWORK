@@ -26,6 +26,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import sys
 from collections import defaultdict
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -290,6 +291,7 @@ def main() -> None:
              "input_issues": [asdict(i) for i in issues]},
             ensure_ascii=False, indent=2), encoding="utf-8")
     if not a.out_md:
+        sys.stdout.reconfigure(encoding="utf-8")  # Windows（cp932）でも日本語を出力できるようにする
         print(md)
 
 

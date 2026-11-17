@@ -65,7 +65,7 @@ class HtmlParityTest(unittest.TestCase):
                 "  return {items: r.items.map(i => [i.area, i.title, i.confidence, i.monthly_low, i.monthly_high]),\n"
                 "          notes: r.notes, low: r.monthly_low, high: r.monthly_high}; })));\n", encoding="utf-8")
             out = subprocess.run(["node", str(runner), str(logic), str(ROOT / "benchmarks.json")],
-                                 input=json.dumps(CASES, ensure_ascii=False), capture_output=True, text=True, check=True)
+                                 input=json.dumps(CASES, ensure_ascii=False), capture_output=True, text=True, encoding="utf-8", check=True)
         js = json.loads(out.stdout)
         for case, j in zip(CASES, js):
             p = py_result(case)

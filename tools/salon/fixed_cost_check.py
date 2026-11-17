@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
@@ -262,6 +263,7 @@ def main() -> None:
     if a.out_md:
         a.out_md.write_text(md, encoding="utf-8")
     else:
+        sys.stdout.reconfigure(encoding="utf-8")  # Windows（cp932）でも日本語を出力できるようにする
         print(md)
     if a.out_json:
         a.out_json.write_text(json.dumps({"salon": res.salon, "monthly_low": res.monthly_low,
